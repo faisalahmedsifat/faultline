@@ -1,18 +1,35 @@
-import { createServer } from "node:http"
+import { serve } from "@hono/node-server"
 
-const port = Number(process.env.PORT ?? 4000)
+import { pingDb } from "./db/client"
+import { createApp } from "./server"
+import { env } from "./lib/env"
+import { logger } from "./lib/logger"
+import { connectRedis } from "./lib/redis"
 
-const server = createServer((_req, res) => {
-  res.writeHead(200, { "content-type": "application/json" })
-  res.end(
-    JSON.stringify({
-      service: "api",
-      status: "ok",
-      message: "faultline API scaffold"
-    })
+async function start() {
+  await pingDb()
+  await connectRedis()
+
+  const app = createApp()
+
+  serve(
+    {
+      fetch: app.fetch,
+      port: env.PORT
+    },
+    (info) => {
+      logger.info("api.started", {
+        host: info.address,
+        port: info.port,
+        nodeEnv: env.NODE_ENV
+      })
+    }
   )
-})
+}
 
-server.listen(port, () => {
-  console.log(`faultline api listening on http://localhost:${port}`)
+start().catch((error) => {
+  logger.error("api.start_failed", {
+    message: error instanceof Error ? error.message : "Unknown startup error"
+  })
+  process.exit(1)
 })
