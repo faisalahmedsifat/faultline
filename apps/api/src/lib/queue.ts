@@ -6,6 +6,7 @@ export const ALERT_DELIVER_QUEUE = "alert.deliver"
 
 export type AlertDeliveryJob = {
   projectId: string
+  alertIds: string[]
   errorId: string
   errorTitle: string
   count: number
@@ -33,4 +34,3 @@ export async function enqueueAlertDelivery(job: AlertDeliveryJob) {
 export async function closeAlertQueue() {
   await alertQueue.close()
 }
-

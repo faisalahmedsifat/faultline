@@ -9,6 +9,7 @@
     "dev": "bun --watch src/index.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "start": "bun src/index.ts",
+    "test": "bun test src/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.27.2"
+    "drizzle-kit": "^0.27.2",
+    "tsx": "^4.19.4"
   }
 }
