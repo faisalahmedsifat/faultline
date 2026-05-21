@@ -1,11 +1,19 @@
-export class Faultline {
-  constructor(readonly options: { dsn?: string; env?: string; enabled?: boolean } = {}) {}
+export { FaultlineClient } from "./client"
+export { FaultlineMiddleware } from "./middleware"
+export type {
+  CaptureContext,
+  ExpressLikeNext,
+  ExpressLikeRequest,
+  FaultlineOptions,
+  IngestPayload
+} from "./types"
 
-  capture(_error: unknown, _context?: Record<string, unknown>) {
-    if (this.options.enabled === false) {
-      return Promise.resolve(undefined)
-    }
+import { FaultlineClient } from "./client"
+import { FaultlineMiddleware } from "./middleware"
+import type { FaultlineOptions } from "./types"
 
-    return Promise.resolve(undefined)
+export class Faultline extends FaultlineMiddleware {
+  constructor(options: FaultlineOptions = {}) {
+    super(options)
   }
 }
