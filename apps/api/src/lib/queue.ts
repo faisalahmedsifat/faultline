@@ -4,9 +4,15 @@ import { redisConnection } from "./redis"
 
 export const ALERT_DELIVER_QUEUE = "alert.deliver"
 
+export type AlertDeliveryTarget = {
+  id: string
+  channel: "slack" | "email" | "discord"
+  destination: string
+}
+
 export type AlertDeliveryJob = {
   projectId: string
-  alertIds: string[]
+  alertTargets: AlertDeliveryTarget[]
   errorId: string
   errorTitle: string
   count: number

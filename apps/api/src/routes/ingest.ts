@@ -185,7 +185,9 @@ async function handleIngestSideEffects(projectId: string, errorRecord: StoredErr
 
     const matchedAlerts = await db
       .select({
-        id: alerts.id
+        id: alerts.id,
+        channel: alerts.channel,
+        destination: alerts.destination
       })
       .from(alerts)
       .where(
@@ -199,7 +201,11 @@ async function handleIngestSideEffects(projectId: string, errorRecord: StoredErr
     try {
       await enqueueAlertDelivery({
         projectId,
-        alertIds: matchedAlerts.map((alert) => alert.id),
+        alertTargets: matchedAlerts.map((alert) => ({
+          id: alert.id,
+          channel: alert.channel as "slack" | "email" | "discord",
+          destination: alert.destination
+        })),
         errorId: errorRecord.id,
         errorTitle: errorRecord.title,
         count: errorRecord.count,
