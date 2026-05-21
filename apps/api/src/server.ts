@@ -5,6 +5,7 @@ import { logger } from "./lib/logger"
 import { jsonError } from "./lib/http"
 import { corsMiddleware } from "./middleware/cors"
 import { alertsRouter } from "./routes/alerts"
+import { errorsRouter } from "./routes/errors"
 import { requestLogger } from "./middleware/request-logger"
 import { healthRouter } from "./routes/health"
 import { ingestRouter } from "./routes/ingest"
@@ -22,6 +23,7 @@ export function createApp() {
   app.route("/", ingestRouter)
   app.route("/", projectsRouter)
   app.route("/", alertsRouter)
+  app.route("/", errorsRouter)
 
   app.onError((error, c) => {
     const appError = toAppError(error)
