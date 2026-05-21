@@ -4,9 +4,11 @@ import { toAppError } from "./lib/http"
 import { logger } from "./lib/logger"
 import { jsonError } from "./lib/http"
 import { corsMiddleware } from "./middleware/cors"
+import { alertsRouter } from "./routes/alerts"
 import { requestLogger } from "./middleware/request-logger"
 import { healthRouter } from "./routes/health"
 import { ingestRouter } from "./routes/ingest"
+import { projectsRouter } from "./routes/projects"
 import { rootRouter } from "./routes/root"
 
 export function createApp() {
@@ -18,6 +20,8 @@ export function createApp() {
   app.route("/", rootRouter)
   app.route("/", healthRouter)
   app.route("/", ingestRouter)
+  app.route("/", projectsRouter)
+  app.route("/", alertsRouter)
 
   app.onError((error, c) => {
     const appError = toAppError(error)

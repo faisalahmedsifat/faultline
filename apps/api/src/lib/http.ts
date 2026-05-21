@@ -1,5 +1,6 @@
 import type { Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
+import { ZodError } from "zod"
 
 import { AppError, isAppError } from "./errors"
 
@@ -38,6 +39,15 @@ export function jsonError(
 export function toAppError(error: unknown) {
   if (isAppError(error)) {
     return error
+  }
+
+  if (error instanceof ZodError) {
+    return new AppError({
+      message: "Invalid request payload",
+      code: "invalid_request",
+      statusCode: 400,
+      details: error.flatten()
+    })
   }
 
   if (error instanceof Error) {
