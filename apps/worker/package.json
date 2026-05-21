@@ -1,0 +1,13 @@
+{
+  "name": "@faultline/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "bun --watch src/index.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
+
