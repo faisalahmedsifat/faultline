@@ -37,21 +37,28 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
 }
 
 function ResizeHandle({
-  onResize,
+  onDragStart,
+  onDrag,
+  onDragEnd,
   side,
 }: {
-  onResize: (deltaX: number) => void
+  onDragStart: () => void
+  onDrag: (deltaX: number) => void
+  onDragEnd: () => void
   side: "left" | "right"
 }) {
   const handlePointerDown = React.useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault()
       const startX = e.clientX
-      const doc = e.currentTarget.ownerDocument
+      const el = e.currentTarget as HTMLElement
+      const doc = el.ownerDocument
+
+      onDragStart()
 
       function onPointerMove(ev: PointerEvent) {
-        const delta = ev.clientX - startX
-        onResize(side === "right" ? -delta : delta)
+        const rawDelta = ev.clientX - startX
+        onDrag(side === "right" ? -rawDelta : rawDelta)
       }
 
       function onPointerUp() {
@@ -59,6 +66,7 @@ function ResizeHandle({
         doc.removeEventListener("pointerup", onPointerUp)
         doc.body.style.cursor = ""
         doc.body.style.userSelect = ""
+        onDragEnd()
       }
 
       doc.body.style.cursor = "col-resize"
@@ -66,14 +74,14 @@ function ResizeHandle({
       doc.addEventListener("pointermove", onPointerMove)
       doc.addEventListener("pointerup", onPointerUp)
     },
-    [onResize, side]
+    [onDragStart, onDrag, onDragEnd, side]
   )
 
   return (
     <div
       onPointerDown={handlePointerDown}
       className={cn(
-        "absolute top-0 bottom-0 z-10 w-1.5 cursor-col-resize group/handle flex items-center justify-center",
+        "absolute top-0 bottom-0 z-10 w-2 cursor-col-resize group/handle flex items-center justify-center",
         "hover:bg-primary/10 active:bg-primary/20 transition-colors",
         side === "right" ? "left-0" : "right-0"
       )}
@@ -107,28 +115,32 @@ function SheetContent({
   maxWidth?: number
 }) {
   const [width, setWidth] = React.useState<number | null>(null)
-  const widthRef = React.useRef<number | null>(null)
+  const dragStartWidth = React.useRef<number>(0)
 
   React.useEffect(() => {
     if (!resizable || side !== "right") return
     const stored = localStorage.getItem("sheet-width")
     const initial = stored ? Number(stored) : (defaultWidth ?? 576)
-    const clamped = Math.min(Math.max(initial, minWidth), maxWidth)
-    setWidth(clamped)
-    widthRef.current = clamped
+    setWidth(Math.min(Math.max(initial, minWidth), maxWidth))
   }, [resizable, side, defaultWidth, minWidth, maxWidth])
 
-  const handleResize = React.useCallback(
+  const handleDragStart = React.useCallback(() => {
+    dragStartWidth.current = width ?? (defaultWidth ?? 576)
+  }, [width, defaultWidth])
+
+  const handleDrag = React.useCallback(
     (deltaX: number) => {
-      const current = widthRef.current
-      if (current == null) return
-      const next = Math.min(Math.max(current + deltaX, minWidth), maxWidth)
-      widthRef.current = next
+      const next = Math.min(Math.max(dragStartWidth.current + deltaX, minWidth), maxWidth)
       setWidth(next)
-      localStorage.setItem("sheet-width", String(next))
     },
     [minWidth, maxWidth]
   )
+
+  const handleDragEnd = React.useCallback(() => {
+    if (width != null) {
+      localStorage.setItem("sheet-width", String(Math.round(width)))
+    }
+  }, [width])
 
   const isHorizontal = side === "left" || side === "right"
   const useResize = resizable && isHorizontal
@@ -146,7 +158,7 @@ function SheetContent({
         style={useResize && width ? { width, maxWidth: "none" } : undefined}
         {...props}
       >
-        {useResize && <ResizeHandle onResize={handleResize} side={side} />}
+        {useResize && <ResizeHandle onDragStart={handleDragStart} onDrag={handleDrag} onDragEnd={handleDragEnd} side={side} />}
         {children}
         {showCloseButton && (
           <SheetPrimitive.Close
