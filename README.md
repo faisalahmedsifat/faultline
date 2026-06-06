@@ -58,7 +58,7 @@ Works with Python, Go, Ruby, PHP, Java, .NET, iOS, Android — [all Sentry SDKs]
 
 ## Faultline SDK
 
-For JavaScript/TypeScript, faultline has its own zero-dependency SDK:
+For JavaScript/TypeScript, use the zero-dependency faultline SDK:
 
 ```bash
 npm install @xyph3r/faultline
@@ -70,21 +70,47 @@ import { Faultline } from "@xyph3r/faultline"
 // Reads FAULTLINE_DSN and FAULTLINE_BASE_URL from env
 Faultline.init()
 
-// Manual capture
-Faultline.capture(err, { route: "/api/checkout", userId: currentUser.id })
+// Manual capture — fire and forget
+Faultline.capture(err, {
+  route: "/api/checkout",
+  userId: currentUser.id,
+  metadata: { cartId: cart.id }
+})
 
-// Wrap a handler — error captured and rethrown
+// Wrap any handler — error is captured and rethrown
 export const POST = Faultline.withCapture(async (req: Request) => {
   // any thrown error is automatically captured
 })
 
-// Observer hooks
+// Strip PII before sending
 Faultline.on("beforeCapture", (payload) => {
-  delete payload.metadata?.password // strip PII
+  delete payload.metadata?.password
 })
+
+// Express middleware
+app.use(Faultline.expressHandler())
 ```
 
 Zero dependencies. Under 3KB. Works in Node, Bun, Deno, and Edge runtimes.
+
+### SDK Features
+
+| Feature | Description |
+|---------|-------------|
+| `Faultline.init()` | Global singleton — reads env vars, call once at startup |
+| `Faultline.capture()` | Fire-and-forget error capture with optional context (route, userId, metadata) |
+| `Faultline.withCapture()` | Wrap any async function — captures and rethrows errors |
+| `Faultline.expressHandler()` | Express error-handling middleware |
+| `new Faultline()` | Isolated instances for multi-project use |
+| Observer hooks | `beforeCapture`, `afterCapture`, `captureError` — filter, enrich, log |
+| CLI | `npx faultline upload-sourcemaps --dir <path> --release <version>` |
+
+### SDK Quick Links
+
+- [Full SDK documentation](packages/sdk/README.md) — complete API reference and framework guides
+- [Changelog](packages/sdk/CHANGELOG.md) — version history
+- [Example project](examples/node-faultline/) — runnable demo
+- [Release guide](packages/sdk/RELEASING.md) — how to publish new versions
 
 ---
 
@@ -170,6 +196,10 @@ See [examples/](examples/) for runnable demo projects.
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — system design, data model, API reference, SDK design
+- [SDK API Reference](packages/sdk/README.md) — full API docs, configuration, framework guides
+- [SDK Changelog](packages/sdk/CHANGELOG.md) — version history and release notes
+- [Release Guide](packages/sdk/RELEASING.md) — how to publish new SDK versions
+- [Examples](examples/) — runnable demo projects (Node + faultline SDK, Node + Sentry SDK, Python + Sentry SDK)
 
 ---
 

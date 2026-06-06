@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 
 const lines = [
   { text: "// 1. Install", type: "comment" as const, delay: 400 },
-  { text: "npm install @faultline/sdk", type: "command" as const, delay: 800 },
+  { text: "npm install @xyph3r/faultline", type: "command" as const, delay: 800 },
   { text: "", type: "blank" as const, delay: 200 },
   { text: "// 2. Initialize (2 lines)", type: "comment" as const, delay: 400 },
-  { text: 'import { Faultline } from "@faultline/sdk"', type: "import" as const, delay: 600 },
+  { text: 'import { Faultline } from "@xyph3r/faultline"', type: "import" as const, delay: 600 },
   { text: "Faultline.init({ dsn: process.env.FAULTLINE_DSN })", type: "code" as const, delay: 600 }
 ]
 
@@ -19,7 +19,7 @@ function renderLine(line: (typeof lines)[number]) {
       return (
         <>
           <span className="text-success">npm</span>
-          <span className="text-code-fg"> install @faultline/sdk</span>
+          <span className="text-code-fg"> install @xyph3r/faultline</span>
         </>
       )
     case "blank":
@@ -30,7 +30,7 @@ function renderLine(line: (typeof lines)[number]) {
           <span className="text-purple-400">import</span>
           <span className="text-code-fg">{" { Faultline } "}</span>
           <span className="text-purple-400">from</span>
-          <span className="text-amber-300"> &quot;@faultline/sdk&quot;</span>
+          <span className="text-amber-300"> &quot;@xyph3r/faultline&quot;</span>
         </>
       )
     case "code":

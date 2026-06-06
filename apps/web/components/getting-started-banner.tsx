@@ -87,13 +87,20 @@ export function GettingStartedBanner({
           <span className="text-xs font-medium">Add to your app</span>
         </div>
         <pre className="text-xs font-mono bg-code-bg text-code-fg rounded-lg p-3 overflow-x-auto">
-          <span className="text-muted-foreground/50">{"// In your app entry point"}</span>
+          <span className="text-muted-foreground/50">{"// 1. Install: npm install @xyph3r/faultline"}</span>
           {"\n"}
-          <span className="text-purple-400">import</span> {"{ Faultline }"} <span className="text-purple-400">from</span> <span className="text-amber-300">&quot;@faultline/sdk&quot;</span>
+          <span className="text-muted-foreground/50">{"// 2. Add to your app entry point"}</span>
+          {"\n"}
+          <span className="text-purple-400">import</span> {"{ Faultline }"} <span className="text-purple-400">from</span> <span className="text-amber-300">&quot;@xyph3r/faultline&quot;</span>
           {"\n\n"}
           <span className="text-primary">Faultline</span>.<span className="text-blue-400">init</span>({`{`}
-          {"\n  "}dsn: <span className="text-success">&quot;{dsn}&quot;</span>
+          {"\n  "}dsn: <span className="text-success">&quot;{dsn}&quot;</span>,
+          {"\n  "}baseUrl: <span className="text-success">&quot;https://faultline.example.com&quot;</span>
           {"\n}"})
+          {"\n\n"}
+          <span className="text-muted-foreground/50">{"// 3. Capture errors"}</span>
+          {"\n"}
+          <span className="text-primary">Faultline</span>.<span className="text-blue-400">capture</span>(error, {"{"} route: <span className="text-success">&quot;/api/checkout&quot;</span> {"}"})
         </pre>
       </div>
     </div>
