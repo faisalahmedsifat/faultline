@@ -18,4 +18,3 @@ FROM deps AS runner
 COPY . .
 WORKDIR /app/apps/web
 CMD ["bun", "run", "start"]
-

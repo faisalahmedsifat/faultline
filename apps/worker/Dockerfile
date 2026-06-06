@@ -11,11 +11,10 @@ RUN bun install
 
 FROM deps AS dev
 COPY . .
-WORKDIR /app/apps/api
+WORKDIR /app/apps/worker
 CMD ["bun", "run", "dev"]
 
 FROM deps AS runner
 COPY . .
-WORKDIR /app/apps/api
+WORKDIR /app/apps/worker
 CMD ["bun", "run", "start"]
-

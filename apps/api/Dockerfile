@@ -7,16 +7,14 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
-COPY packages/sdk/tsconfig.json packages/sdk/tsconfig.json
 RUN bun install
 
 FROM deps AS dev
 COPY . .
-WORKDIR /app/apps/worker
+WORKDIR /app/apps/api
 CMD ["bun", "run", "dev"]
 
 FROM deps AS runner
 COPY . .
-WORKDIR /app/apps/worker
+WORKDIR /app/apps/api
 CMD ["bun", "run", "start"]
-

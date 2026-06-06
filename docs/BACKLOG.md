@@ -17,8 +17,8 @@ Acceptance criteria:
 
 ### BL-002 Local developer environment
 - Add `.env.example`
-- Add `docker-compose.yml`, `docker-compose.dev.yml`, `Dockerfile.api`, `Dockerfile.web`, `Dockerfile.worker`
-- Add `Caddyfile.example`
+- Add `compose.yml`, `compose.dev.yml`, `apps/api/Dockerfile`, `apps/web/Dockerfile`, `apps/worker/Dockerfile`
+- Add `infra/Caddyfile.example`
 - Decide how local development runs: direct processes, compose, or both
 
 Acceptance criteria:

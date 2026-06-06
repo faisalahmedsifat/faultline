@@ -76,7 +76,7 @@ faultline runs as three application services plus two infrastructure services, a
 
 ### Public surface (single port via reverse proxy)
 
-Users run a reverse proxy (Caddy, Nginx, Cloudflare Tunnel) in front. Recommended Caddy config ships in the repo as `Caddyfile.example`:
+Users run a reverse proxy (Caddy, Nginx, Cloudflare Tunnel) in front. Recommended Caddy config ships in the repo as `infra/Caddyfile.example`:
 
 ```
 faultline.yourdomain.com {
@@ -466,12 +466,10 @@ faultline/
 │       ├── tsconfig.json
 │       └── package.json
 │
-├── docker-compose.yml
-├── docker-compose.dev.yml          # mounts source, hot reload
-├── Dockerfile.api
-├── Dockerfile.web
-├── Dockerfile.worker
-├── Caddyfile.example
+├── infra/
+│   └── Caddyfile.example
+├── compose.yml                     # production Docker Compose
+├── compose.dev.yml                 # mounts source, hot reload
 ├── turbo.json
 ├── package.json                    # root workspace
 └── README.md
@@ -481,14 +479,14 @@ faultline/
 
 ## 10. Docker Compose
 
-### Production (`docker-compose.yml`)
+### Production (`compose.yml`)
 
 ```yaml
 services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: apps/web/Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -499,7 +497,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: apps/api/Dockerfile
     ports:
       - "4000:4000"
     environment:
@@ -515,7 +513,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: apps/worker/Dockerfile
     environment:
       REDIS_URL: redis://redis:6379
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
@@ -553,7 +551,7 @@ volumes:
 ### User deployment (three commands)
 
 ```bash
-curl -O https://faultline.dev/docker-compose.yml
+curl -O https://faultline.dev/compose.yml
 cp .env.example .env   # fill in optional alert config
 docker compose up -d
 ```
