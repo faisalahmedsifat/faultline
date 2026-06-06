@@ -9,12 +9,7 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 RUN bun install
 
-FROM deps AS dev
-COPY . .
-WORKDIR /app/apps/api
-CMD ["bun", "run", "dev"]
-
 FROM deps AS runner
 COPY . .
 WORKDIR /app/apps/api
-CMD ["bun", "run", "start"]
+CMD ["bun", "src/index.ts"]

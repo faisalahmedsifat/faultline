@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "example-node-faultline",
+      "dependencies": {
+        "@xyph3r/faultline": "latest",
+      },
+    },
+  },
+  "packages": {
+    "@xyph3r/faultline": ["@xyph3r/faultline@0.1.1", "", {}, "sha512-t/kMWDx8eGuXXn6JCG1Hn99pQFkJ6kl5dLzUsKwtaF4FNbPQY27LsXzYPWdfc5pw/1ZOG9hys6iggZWkzj/KJQ=="],
+  }
+}

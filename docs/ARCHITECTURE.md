@@ -247,29 +247,31 @@ A reverse proxy (Caddy, Nginx, Cloudflare Tunnel) is recommended in production. 
 faultline accepts events from any Sentry SDK. Configure your Sentry SDK with a faultline DSN:
 
 ```
-https://{anything}@{host}/{dsn_key}
+https://{dsn_key}@{host}/1
 ```
+
+The `{dsn_key}` is your faultline project's DSN key. The `/1` is a dummy project ID (Sentry requires a numeric project ID — we use `1`). faultline extracts the DSN key from the `X-Sentry-Auth` header.
 
 Examples:
 
 ```python
 # Python
 import sentry_sdk
-sentry_sdk.init(dsn="https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e")
+sentry_sdk.init(dsn="https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1")
 ```
 
 ```ts
 // Node.js
 import * as Sentry from "@sentry/node"
-Sentry.init({ dsn: "https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e" })
+Sentry.init({ dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1" })
 ```
 
 ```go
 // Go
 import "github.com/getsentry/sentry-go"
 sentry.Init(sentry.ClientOptions{
-    Dsn: "https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e",
+    Dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1",
 })
 ```
 
-The endpoint `POST /api/{dsn_key}/store/` accepts Sentry's envelope format and maps it to faultline's internal model. This gives faultline access to Sentry's entire SDK ecosystem — Python, Go, Ruby, PHP, Java, .NET, iOS, Android, and more — with zero additional maintenance burden.
+The endpoint `POST /api/{project_id}/store/` accepts Sentry's envelope format and maps it to faultline's internal model. This gives faultline access to Sentry's entire SDK ecosystem — Python, Go, Ruby, PHP, Java, .NET, iOS, Android, and more — with zero additional maintenance burden.

@@ -159,12 +159,18 @@ type StoredError = {
 
 export const sentryRouter = new Hono()
 
-sentryRouter.post("/api/:dsnKey/store", async (c) => {
-  const dsnKey = c.req.param("dsnKey")
+sentryRouter.post("/api/:projectId/store", async (c) => {
+  // Sentry DSN format: https://{dsn_key}@{host}/{project_id}
+  // The dsn_key is sent as sentry_key in the X-Sentry-Auth header
+  // The project_id in the URL is ignored (Sentry requires an integer, we use any)
+  const authHeader = c.req.header("x-sentry-auth") ?? ""
+  const keyMatch = authHeader.match(/sentry_key=([^,]+)/)
+  const dsnKey = keyMatch ? keyMatch[1] : null
+
   if (!dsnKey) {
     throw new AppError({
       code: "invalid_dsn_key",
-      message: "DSN key is required",
+      message: "Missing sentry_key in X-Sentry-Auth header",
       statusCode: 400
     })
   }

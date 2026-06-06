@@ -49,7 +49,7 @@ The SDK is zero-dependency, under 3KB, and works in Node, Bun, Deno, and Edge ru
 
 ```python
 import sentry_sdk
-sentry_sdk.init(dsn="https://x@faultline.example.com/{dsn_key}")
+sentry_sdk.init(dsn="https://{dsn_key}@faultline.example.com/1")
 ```
 
 Works with Python, Go, Ruby, PHP, Java, .NET — [all Sentry SDKs](https://docs.sentry.io/platforms/).

@@ -8,8 +8,18 @@ import type { AlertDeliveryJob } from "./types"
 
 const ALERT_DELIVER_QUEUE = "alert.deliver"
 
+const HEALTH_PORT = parseInt(process.env.HEALTH_PORT ?? "4001")
+
 async function start() {
   await connectRedis()
+
+  // Health check server
+  Bun.serve({
+    port: HEALTH_PORT,
+    fetch: () => new Response(JSON.stringify({ service: "worker", status: "ok" }), {
+      headers: { "content-type": "application/json" }
+    })
+  })
 
   const workerConnection = createRedisConnection()
   const eventsConnection = createRedisConnection()
