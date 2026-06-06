@@ -57,12 +57,15 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
   })
 
   const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
-  const sdkSnippet = `import { Faultline } from "@xyph3r/faultline"
+  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/1`
+  const faultlineSnippet = `import { Faultline } from "@xyph3r/faultline"
 
 Faultline.init({
   dsn: "${dsnKey}",
   baseUrl: "${ingestBase}"
 })`
+  const sentrySnippet = `import * as Sentry from "@sentry/node"
+Sentry.init({ dsn: "${sentryDsn}" })`
 
   return (
     <div className="card">
@@ -94,18 +97,41 @@ Faultline.init({
         </div>
       </div>
 
-      <div className="dsn flex items-center justify-between gap-2 mb-4">
+      {/* Faultline-native DSN */}
+      <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Faultline SDK</p>
+      <div className="dsn flex items-center justify-between gap-2 mb-3">
         <code className="text-sm text-[#ffb36b] break-all">{dsn}</code>
         <button className="btn btn-sm" onClick={handleCopy}>
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
 
+      {/* Sentry-compatible DSN */}
+      <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Sentry SDK (any language)</p>
+      <div className="dsn flex items-center justify-between gap-2 mb-4">
+        <code className="text-sm text-[#ffb36b] break-all">{sentryDsn}</code>
+        <button className="btn btn-sm" onClick={() => {
+          navigator.clipboard.writeText(sentryDsn)
+          toast.success("Sentry DSN copied")
+        }}>
+          Copy
+        </button>
+      </div>
+
       <details className="group">
         <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60 transition-colors select-none">
-          SDK Setup
+          Setup examples
         </summary>
-        <pre className="code-block mt-2 text-xs">{sdkSnippet}</pre>
+        <div className="mt-2 space-y-3">
+          <div>
+            <p className="text-xs text-white/30 mb-1">Faultline SDK</p>
+            <pre className="code-block text-xs">{faultlineSnippet}</pre>
+          </div>
+          <div>
+            <p className="text-xs text-white/30 mb-1">Sentry SDK (Node, Python, Go, etc.)</p>
+            <pre className="code-block text-xs">{sentrySnippet}</pre>
+          </div>
+        </div>
       </details>
     </div>
   )
