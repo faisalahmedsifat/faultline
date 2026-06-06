@@ -7,13 +7,14 @@ export const dynamic = "force-dynamic"
 export default async function AlertSettingsPage({
   params
 }: {
-  params: { projectId: string }
+  params: Promise<{ projectId: string }>
 }) {
+  const { projectId } = await params
   let alerts = [] as Awaited<ReturnType<typeof getAlerts>>["alerts"]
   let error: string | null = null
 
   try {
-    const data = await getAlerts(params.projectId)
+    const data = await getAlerts(projectId)
     alerts = data.alerts
   } catch (err) {
     error = err instanceof Error ? err.message : "Failed to load alerts"
@@ -22,7 +23,7 @@ export default async function AlertSettingsPage({
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 pt-6 pb-12">
       <Link
-        href={`/projects/${params.projectId}`}
+        href={`/projects/${projectId}`}
         className="text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         &larr; Back to Inbox
@@ -35,7 +36,7 @@ export default async function AlertSettingsPage({
         </div>
       )}
 
-      <AlertConfigForm projectId={params.projectId} existing={alerts} />
+      <AlertConfigForm projectId={projectId} existing={alerts} />
     </div>
   )
 }

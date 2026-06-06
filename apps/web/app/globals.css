@@ -43,67 +43,64 @@
 }
 
 :root {
-  --background: 0 0% 4%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 30 100% 50%;
+  --background: 0 0% 98%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 24 100% 45%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 13%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 13%;
-  --muted-foreground: 0 0% 60%;
-  --accent: 0 0% 13%;
-  --accent-foreground: 0 0% 98%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 6% 10%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 46%;
+  --accent: 240 5% 96%;
+  --accent-foreground: 240 6% 10%;
   --destructive: 0 84% 60%;
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 30 100% 50%;
-  --chart-1: 30 100% 50%;
-  --chart-2: 200 80% 60%;
-  --chart-3: 150 60% 50%;
-  --chart-4: 50 90% 55%;
-  --chart-5: 0 70% 60%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 24 100% 45%;
   --radius: 0.5rem;
-  --sidebar: 0 0% 5%;
-  --sidebar-foreground: 0 0% 90%;
-  --sidebar-primary: 30 100% 50%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 240 5% 26%;
+  --sidebar-primary: 24 100% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 10%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 0 0% 10%;
-  --sidebar-ring: 30 100% 50%;
+  --sidebar-accent: 240 5% 96%;
+  --sidebar-accent-foreground: 240 6% 10%;
+  --sidebar-border: 240 6% 90%;
+  --sidebar-ring: 24 100% 45%;
 }
 
 body {
-  background: #0a0b0d;
-  color: #f5f7fa;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -15%, rgba(255, 111, 0, 0.08), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255, 140, 60, 0.04), transparent 50%),
+    linear-gradient(180deg, #fdfdfc 0%, #f8f7f5 30%, #f5f4f1 100%);
+  background-attachment: fixed;
+  color: hsl(240 10% 3.9%);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* code block styling */
 pre.code-block {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.8125rem;
   line-height: 1.5;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: hsl(240 5% 96%);
+  border: 1px solid hsl(240 6% 90%);
   border-radius: 0.75rem;
   padding: 1rem;
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  color: rgba(245, 247, 250, 0.8);
 }
 
-/* DSN display */
 .dsn {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.8125rem;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: hsl(240 5% 96%);
+  border: 1px solid hsl(240 6% 90%);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   word-break: break-all;

@@ -13,18 +13,20 @@ export default async function ErrorInboxPage({
   params,
   searchParams
 }: {
-  params: { projectId: string }
-  searchParams: { status?: string; env?: string; page?: string; search?: string }
+  params: Promise<{ projectId: string }>
+  searchParams: Promise<{ status?: string; env?: string; page?: string; search?: string }>
 }) {
+  const { projectId } = await params
+  const sp = await searchParams
   let data: Awaited<ReturnType<typeof getErrors>> | null = null
   let error: string | null = null
 
-  const status = searchParams.status as "open" | "ignored" | "resolved" | undefined
-  const env = searchParams.env
-  const page = Number(searchParams.page) || 1
+  const status = sp.status as "open" | "ignored" | "resolved" | undefined
+  const env = sp.env
+  const page = Number(sp.page) || 1
 
   try {
-    data = await getErrors(params.projectId, { status, env, page, pageSize: 20 })
+    data = await getErrors(projectId, { status, env, page, pageSize: 20 })
   } catch (err) {
     error = err instanceof Error ? err.message : "Failed to load errors"
   }
@@ -65,7 +67,7 @@ export default async function ErrorInboxPage({
           <h1 className="text-2xl font-bold tracking-tight mt-0.5">Error Inbox</h1>
         </div>
         <Link
-          href={`/projects/${params.projectId}/settings`}
+          href={`/projects/${projectId}/settings`}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Settings
@@ -116,14 +118,14 @@ export default async function ErrorInboxPage({
             <ErrorCard
               key={err.id}
               error={err}
-              projectId={params.projectId}
+              projectId={projectId}
             />
           ))}
         </div>
       )}
 
       {/* Detail sheet */}
-      <ErrorSheet projectId={params.projectId} />
+      <ErrorSheet projectId={projectId} />
     </div>
   )
 }

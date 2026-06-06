@@ -89,7 +89,7 @@ export function ErrorCard({
               {error.userCount > 0 && (
                 <span className="tabular-nums">{error.userCount} users</span>
               )}
-              <span className="tabular-nums ml-auto shrink-0">
+              <span className="tabular-nums ml-auto shrink-0" suppressHydrationWarning>
                 {relativeTime(error.lastSeen)}
               </span>
             </div>
