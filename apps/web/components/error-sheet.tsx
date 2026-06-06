@@ -86,6 +86,12 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
+                  {error.release && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Release</p>
+                      <p className="font-medium text-primary">{error.release}</p>
+                    </div>
+                  )}
                   {error.file && (
                     <div>
                       <p className="text-xs text-muted-foreground">Location</p>
@@ -120,7 +126,31 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
                   </div>
                 </div>
 
-                {error.stack && (
+                {error.resolvedStack && error.resolvedStack.length > 0 ? (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        Resolved Stack Trace
+                      </p>
+                      {error.resolvedStack.map((frame, i) => {
+                        const f = frame as unknown as { file: string; line: number; col: number; fn: string; sourceContext: string | null }
+                        return (
+                          <div key={i} className="mb-3">
+                            <p className="text-xs font-mono text-primary mb-1">
+                              at {f.fn} ({f.file}:{f.line}:{f.col})
+                            </p>
+                            {f.sourceContext && (
+                              <pre className="text-xs font-mono bg-black/20 rounded p-2 overflow-x-auto whitespace-pre-wrap">
+                                {f.sourceContext}
+                              </pre>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                ) : error.stack ? (
                   <>
                     <Separator />
                     <div>
@@ -132,7 +162,7 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
                       </pre>
                     </div>
                   </>
-                )}
+                ) : null}
 
                 {error.metadata && Object.keys(error.metadata).length > 0 && (
                   <>

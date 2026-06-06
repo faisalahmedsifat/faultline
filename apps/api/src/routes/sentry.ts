@@ -107,6 +107,7 @@ function mapSentryToIngest(event: SentryEvent): {
   level: string
   userId?: string
   metadata?: Record<string, unknown>
+  release?: string
 } {
   const exc = event.exception?.values?.[0]
   const topFrame = exc?.stacktrace?.frames?.[0]
@@ -130,7 +131,8 @@ function mapSentryToIngest(event: SentryEvent): {
       ...event.tags,
       ...event.extra,
       sentry_event_id: event.event_id
-    }
+    },
+    release: event.tags?.release ?? event.extra?.release as string
   }
 }
 
@@ -252,6 +254,7 @@ sentryRouter.post("/api/:projectId/store", async (c) => {
       firstSeen: now,
       lastSeen: now,
       metadata: payload.metadata ?? null,
+      release: payload.release ?? null,
       users: payload.userId ? [payload.userId] : []
     })
     .onConflictDoUpdate({
@@ -260,6 +263,7 @@ sentryRouter.post("/api/:projectId/store", async (c) => {
         count: sql`${errors.count} + 1`,
         lastSeen: now,
         message: payload.message ?? undefined,
+        release: payload.release ?? undefined,
         stack: payload.stack ?? undefined,
         route: payload.route ?? undefined,
         file: payload.file ?? undefined,

@@ -3,6 +3,7 @@ export type CaptureContext = {
   route?: string
   metadata?: Record<string, unknown>
   level?: "error" | "warning" | "info"
+  release?: string
 }
 
 export type IngestPayload = {
@@ -17,12 +18,14 @@ export type IngestPayload = {
   level?: "error" | "warning" | "info"
   userId?: string
   metadata?: Record<string, unknown>
+  release?: string
 }
 
 export type FaultlineOptions = {
   baseUrl?: string
   dsn?: string
   env?: string
+  release?: string
   enabled?: boolean
   debug?: boolean
   fetch?: typeof fetch

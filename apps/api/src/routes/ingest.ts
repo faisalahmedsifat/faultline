@@ -33,7 +33,8 @@ const ingestPayloadSchema = z.object({
   env: z.string().optional(),
   level: z.enum(["error", "warning", "info"]).optional(),
   userId: z.string().min(1).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional()
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  release: z.string().optional()
 })
 
 type IngestPayload = z.infer<typeof ingestPayloadSchema>
@@ -124,6 +125,7 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
       firstSeen: now,
       lastSeen: now,
       metadata: payload.metadata ?? null,
+      release: payload.release ?? null,
       users: payload.userId ? [payload.userId] : []
     })
     .onConflictDoUpdate({
@@ -140,6 +142,7 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
         env: payload.env ?? undefined,
         level: payload.level ?? undefined,
         metadata: payload.metadata ?? undefined,
+        release: payload.release ?? undefined,
         users: payload.userId
           ? sql`CASE
               WHEN ${payload.userId} = ANY(${errors.users}) THEN ${errors.users}

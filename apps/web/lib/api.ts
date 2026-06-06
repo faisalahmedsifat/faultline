@@ -25,6 +25,7 @@ export type ErrorListItemDto = {
   userCount: number
   firstSeen: string
   lastSeen: string
+  release: string | null
 }
 
 export type ErrorDetailDto = ErrorListItemDto & {
@@ -33,6 +34,7 @@ export type ErrorDetailDto = ErrorListItemDto & {
   col: number | null
   metadata: Record<string, unknown> | null
   users: string[]
+  resolvedStack: Record<string, unknown>[] | null
 }
 
 export type AlertDto = {

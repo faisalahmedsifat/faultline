@@ -3,6 +3,7 @@ import { Hono } from "hono"
 import { toAppError } from "./lib/http"
 import { logger } from "./lib/logger"
 import { jsonError } from "./lib/http"
+import { authMiddleware } from "./middleware/auth"
 import { corsMiddleware } from "./middleware/cors"
 import { alertsRouter } from "./routes/alerts"
 import { errorsRouter } from "./routes/errors"
@@ -12,6 +13,7 @@ import { ingestRouter } from "./routes/ingest"
 import { projectsRouter } from "./routes/projects"
 import { rootRouter } from "./routes/root"
 import { sentryRouter } from "./routes/sentry"
+import { sourcemapsRouter } from "./routes/sourcemaps"
 
 export function createApp() {
   const app = new Hono()
@@ -21,11 +23,15 @@ export function createApp() {
 
   app.route("/", rootRouter)
   app.route("/", healthRouter)
-  app.route("/", ingestRouter)
-  app.route("/", sentryRouter)
+  // ── Public routes (no auth) ──
+  app.route("/", ingestRouter)     // DSN-based auth
+  app.route("/", sentryRouter)     // DSN-based auth
+  // ── Auth boundary ──
+  app.use("/api/*", authMiddleware) // everything below requires Bearer token if AUTH_TOKEN is set
   app.route("/", projectsRouter)
   app.route("/", alertsRouter)
   app.route("/", errorsRouter)
+  app.route("/", sourcemapsRouter)
 
   app.onError((error, c) => {
     const appError = toAppError(error)

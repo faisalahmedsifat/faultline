@@ -46,6 +46,8 @@ export const errors = pgTable(
     firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
     metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    release: text("release"),
+    resolvedStack: jsonb("resolved_stack").$type<Record<string, unknown>[] | null>(),
     users: text("users")
       .array()
       .notNull()

@@ -3,6 +3,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 
 import { db } from "../db/client"
+import { resolveStack } from "../lib/sourcemap"
 import { errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
@@ -42,6 +43,7 @@ type ErrorListItemDto = {
   userCount: number
   firstSeen: string
   lastSeen: string
+  release: string | null
 }
 
 type ErrorDetailDto = ErrorListItemDto & {
@@ -50,6 +52,7 @@ type ErrorDetailDto = ErrorListItemDto & {
   col: number | null
   metadata: Record<string, unknown> | null
   users: string[]
+  resolvedStack: Record<string, unknown>[] | null
 }
 
 export const errorsRouter = new Hono()
@@ -97,7 +100,8 @@ errorsRouter.get("/api/errors", async (c) => {
         count: errors.count,
         userCount: errors.userCount,
         firstSeen: errors.firstSeen,
-        lastSeen: errors.lastSeen
+        lastSeen: errors.lastSeen,
+        release: errors.release
       })
       .from(errors)
       .where(where)
@@ -149,6 +153,8 @@ errorsRouter.get("/api/errors/:id", async (c) => {
       firstSeen: errors.firstSeen,
       lastSeen: errors.lastSeen,
       metadata: errors.metadata,
+      release: errors.release,
+      resolvedStack: errors.resolvedStack,
       users: errors.users
     })
     .from(errors)
@@ -163,10 +169,26 @@ errorsRouter.get("/api/errors/:id", async (c) => {
     })
   }
 
+  // Resolve source maps if we have a release and stack but no cached resolution
+  let resolvedStack: Record<string, unknown>[] | null =
+    (row.resolvedStack as Record<string, unknown>[] | null) ?? null
+
+  if (!resolvedStack && row.release && row.stack) {
+    try {
+      const frames = await resolveStack(row.id, row.projectId, row.stack, row.release)
+      if (frames.length > 0) {
+        resolvedStack = frames as unknown as Record<string, unknown>[]
+      }
+    } catch {
+      // Resolution failure shouldn't block the detail response
+    }
+  }
+
   const errorDetail: ErrorDetailDto = {
     ...row,
     status: row.status as ErrorDetailDto["status"],
     metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+    resolvedStack,
     firstSeen: row.firstSeen.toISOString(),
     lastSeen: row.lastSeen.toISOString()
   }

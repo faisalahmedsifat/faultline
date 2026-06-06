@@ -14,6 +14,7 @@ export class FaultlineClient {
     dsn: string | undefined
     baseUrl: string | undefined
     env: string
+    release: string | undefined
     enabled: boolean
     debug: boolean
     fetch: typeof fetch | undefined
@@ -27,6 +28,7 @@ export class FaultlineClient {
       dsn: options.dsn ?? process.env.FAULTLINE_DSN,
       baseUrl: options.baseUrl ?? process.env.FAULTLINE_BASE_URL ?? "https://faultline.dev",
       env: options.env ?? process.env.NODE_ENV ?? "production",
+      release: options.release ?? process.env.FAULTLINE_RELEASE,
       enabled: options.enabled ?? true,
       debug: options.debug ?? false,
       fetch: options.fetch,
@@ -48,7 +50,8 @@ export class FaultlineClient {
 
     let payload = buildPayload(error, {
       ...context,
-      env: this.options.env
+      env: this.options.env,
+      release: context.release ?? this.options.release
     })
 
     if (this.options.onBeforeCapture) {
@@ -96,7 +99,7 @@ export class FaultlineClient {
 
 function buildPayload(
   error: unknown,
-  context: CaptureContext & { env: string }
+  context: CaptureContext & { env: string; release?: string }
 ): IngestPayload {
   const normalized = normalizeError(error)
 
@@ -111,7 +114,8 @@ function buildPayload(
     env: context.env,
     level: context.level ?? "error",
     userId: context.userId,
-    metadata: context.metadata
+    metadata: context.metadata,
+    release: context.release
   }
 }
 

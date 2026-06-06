@@ -79,6 +79,11 @@ export function ErrorCard({
               </p>
             )}
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {error.release && (
+                <span className="bg-primary/10 text-primary font-medium px-1.5 py-0.5 rounded text-[10px]">
+                  {error.release}
+                </span>
+              )}
               {error.file && (
                 <span className="truncate max-w-[180px]">
                   {error.file}{error.line ? `:${error.line}` : ""}
