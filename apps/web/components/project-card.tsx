@@ -57,7 +57,7 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
   })
 
   const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
-  const sdkSnippet = `import { Faultline } from "faultline"
+  const sdkSnippet = `import { Faultline } from "@xyph3r/faultline"
 
 Faultline.init({
   dsn: "${dsnKey}",

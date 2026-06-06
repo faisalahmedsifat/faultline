@@ -172,7 +172,7 @@ BullMQ config: 3 attempts, 5s exponential backoff, keep last 1000 failed jobs fo
 The `faultline` npm package is zero-dependency, under 3KB, and uses native `fetch`.
 
 ```ts
-import { Faultline } from "faultline"
+import { Faultline } from "@xyph3r/faultline"
 
 Faultline.init({
   dsn: process.env.FAULTLINE_DSN,         // project key

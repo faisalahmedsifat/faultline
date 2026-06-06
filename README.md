@@ -21,11 +21,11 @@ Open `http://localhost:3000`. Create a project. Copy your DSN.
 ## SDK
 
 ```bash
-npm install faultline
+npm install @xyph3r/faultline
 ```
 
 ```ts
-import { Faultline } from "faultline"
+import { Faultline } from "@xyph3r/faultline"
 
 // Reads FAULTLINE_DSN and FAULTLINE_BASE_URL from env
 Faultline.init()

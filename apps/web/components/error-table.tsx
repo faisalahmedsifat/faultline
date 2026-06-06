@@ -17,7 +17,7 @@ export function ErrorTable({
           Configure the SDK with this project&apos;s DSN and deploy to start tracking.
         </p>
         <pre className="code-block max-w-lg mx-auto text-left text-xs">
-{`import { Faultline } from "faultline"
+{`import { Faultline } from "@xyph3r/faultline"
 
 Faultline.init({
   dsn: process.env.FAULTLINE_DSN,

@@ -119,7 +119,7 @@ export default function LandingPage() {
             {
               step: "3",
               label: "Install the SDK and start tracking",
-              cmd: `import { Faultline } from "faultline"\n\nFaultline.init()\nFaultline.capture(err, { route: "/api/checkout" })`
+              cmd: `import { Faultline } from "@xyph3r/faultline"\n\nFaultline.init()\nFaultline.capture(err, { route: "/api/checkout" })`
             }
           ].map((s) => (
             <div key={s.step} className="card flex gap-4 items-start">

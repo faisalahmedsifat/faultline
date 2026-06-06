@@ -3,7 +3,7 @@
 Self-hosted error tracking SDK. Zero dependencies, works everywhere.
 
 ```ts
-import { Faultline } from "faultline"
+import { Faultline } from "@xyph3r/faultline"
 
 Faultline.init({
   dsn: process.env.FAULTLINE_DSN,
@@ -27,7 +27,7 @@ Faultline.on("beforeCapture", (payload) => {
 ## Install
 
 ```bash
-npm install faultline
+npm install @xyph3r/faultline
 ```
 
 ## Requirements
