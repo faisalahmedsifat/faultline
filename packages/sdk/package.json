@@ -1,6 +1,6 @@
 {
   "name": "@xyph3r/faultline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Self-hosted error tracking SDK. Zero dependencies, works everywhere.",
   "license": "MIT",
   "repository": {
