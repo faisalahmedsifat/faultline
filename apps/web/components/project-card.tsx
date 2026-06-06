@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { deleteProject, rotateDsn, type ProjectDto } from "@/lib/api"
+import { ConfirmModal } from "@/components/confirm-modal"
 
 export function ProjectCard({ project }: { project: ProjectDto }) {
   const [dsn, setDsn] = useState(project.dsn)
@@ -11,18 +13,18 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
   const [rotating, setRotating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const router = useRouter()
 
   async function handleRotate() {
     setRotating(true)
-    setError(null)
     try {
       const result = await rotateDsn(project.id)
       setDsn(result.project.dsn)
       setDsnKey(result.project.dsnKey)
+      toast.success("DSN rotated — update your SDK config")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Rotation failed")
+      toast.error(err instanceof Error ? err.message : "Rotation failed")
     } finally {
       setRotating(false)
     }
@@ -31,18 +33,19 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
   async function handleCopy() {
     await navigator.clipboard.writeText(dsn)
     setCopied(true)
+    toast.success("DSN copied to clipboard")
     setTimeout(() => setCopied(false), 2000)
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete "${project.name}" and all its errors? This cannot be undone.`)) return
     setDeleting(true)
-    setError(null)
+    setConfirmOpen(false)
     try {
       await deleteProject(project.id)
       router.refresh()
+      toast.success(`"${project.name}" deleted`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed")
+      toast.error(err instanceof Error ? err.message : "Delete failed")
       setDeleting(false)
     }
   }
@@ -53,9 +56,24 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
     day: "numeric"
   })
 
+  const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
+  const sdkSnippet = `import { Faultline } from "faultline"
+
+Faultline.init({
+  dsn: "${dsnKey}",
+  baseUrl: "${ingestBase}"
+})`
+
   return (
     <div className="card">
-      {error && <div className="toast toast-error mb-4">{error}</div>}
+      <ConfirmModal
+        open={confirmOpen}
+        title={`Delete "${project.name}"?`}
+        message="All errors and alert configs for this project will be permanently deleted. This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
@@ -70,18 +88,25 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
           <button className="btn btn-sm" onClick={handleRotate} disabled={rotating}>
             {rotating ? "Rotating..." : "Rotate DSN"}
           </button>
-          <button className="btn btn-sm btn-danger" onClick={handleDelete} disabled={deleting}>
+          <button className="btn btn-sm btn-danger" onClick={() => setConfirmOpen(true)} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
 
-      <div className="dsn flex items-center justify-between gap-2">
+      <div className="dsn flex items-center justify-between gap-2 mb-4">
         <code className="text-sm text-[#ffb36b] break-all">{dsn}</code>
         <button className="btn btn-sm" onClick={handleCopy}>
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
+
+      <details className="group">
+        <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60 transition-colors select-none">
+          SDK Setup
+        </summary>
+        <pre className="code-block mt-2 text-xs">{sdkSnippet}</pre>
+      </details>
     </div>
   )
 }

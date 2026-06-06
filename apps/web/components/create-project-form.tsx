@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { createProject } from "@/lib/api"
 
 export function CreateProjectForm() {
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -16,14 +16,13 @@ export function CreateProjectForm() {
     if (!trimmed) return
 
     setLoading(true)
-    setError(null)
-
     try {
-      await createProject(trimmed)
+      const result = await createProject(trimmed)
       setName("")
       router.refresh()
+      toast.success(`"${result.project.name}" created`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project")
+      toast.error(err instanceof Error ? err.message : "Failed to create project")
     } finally {
       setLoading(false)
     }
@@ -31,7 +30,6 @@ export function CreateProjectForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      {error && <div className="toast toast-error mb-4">{error}</div>}
       <div className="flex gap-2 items-end">
         <input
           className="input flex-1"

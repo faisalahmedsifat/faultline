@@ -106,15 +106,18 @@ export async function deleteProject(projectId: string): Promise<void> {
 
 export async function getErrors(
   projectId: string,
-  filters?: ErrorFilters
+  filters?: ErrorFilters & { page?: number; pageSize?: number }
 ): Promise<{
   projectId: string
   filters: { status: string | null; env: string | null }
+  pagination: { page: number; pageSize: number; total: number; totalPages: number }
   errors: ErrorListItemDto[]
 }> {
   const params = new URLSearchParams({ projectId })
   if (filters?.status) params.set("status", filters.status)
   if (filters?.env) params.set("env", filters.env)
+  if (filters?.page) params.set("page", String(filters.page))
+  if (filters?.pageSize) params.set("pageSize", String(filters.pageSize))
 
   return request(`/api/errors?${params}`)
 }

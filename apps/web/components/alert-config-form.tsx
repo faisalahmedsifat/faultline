@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { replaceAlerts, type AlertDto, type AlertChannel } from "@/lib/api"
 
 type Row = {
@@ -51,8 +52,6 @@ export function AlertConfigForm({
     existing.length > 0 ? existing.map(alertToRow) : [emptyRow()]
   )
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -70,23 +69,20 @@ export function AlertConfigForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    setError(null)
-    setSuccess(false)
 
     const validRows = rows.filter((r) => r.destination.trim())
 
     try {
       await replaceAlerts(projectId, validRows)
-      setSuccess(true)
       router.refresh()
-      // Refresh this component's data
       if (validRows.length > 0) {
         setRows(validRows.map(alertToRow as (a: unknown) => Row))
       } else {
         setRows([emptyRow()])
       }
+      toast.success("Alert configuration saved")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save alerts")
+      toast.error(err instanceof Error ? err.message : "Failed to save alerts")
     } finally {
       setSaving(false)
     }
@@ -94,9 +90,6 @@ export function AlertConfigForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {error && <div className="toast toast-error mb-4">{error}</div>}
-      {success && <div className="toast toast-success mb-4">Alerts saved.</div>}
-
       {rows.map((row, i) => (
         <div key={row.key} className="channel-row">
           <div className="channel-row-header">

@@ -1,48 +1,60 @@
 # faultline
 
-> **Self-hosted error inbox for people who would rather `docker compose up` than pay for Sentry.**
+**Production errors, not production bills.**
 
-faultline tracks production errors from your apps, deduplicates them by fingerprint, and alerts you via Slack, Discord, or Email — all running on your own infrastructure.
+faultline is a self-hosted error tracker for teams who are tired of paying per-event, per-seat, per-gigabyte. Deploy in one command. Your data, your server, your rules.
 
 ---
 
-## Quickstart (Production)
+## Quickstart
 
 ```bash
-curl -O https://raw.githubusercontent.com/.../compose.yml
-cp .env.example .env
+git clone https://github.com/your-org/faultline.git
+cd faultline
 docker compose up -d
 ```
 
-Open `http://localhost:3000`, create a project, copy the DSN, and configure the SDK.
+Open `http://localhost:3000` → create a project → copy your DSN.
 
 ---
 
-## SDK Usage
+## SDK
 
 ```bash
 npm install faultline
+# or: bun add faultline
 ```
 
 ```typescript
 import { Faultline } from "faultline"
 
-const fl = new Faultline({
-  dsn: process.env.FAULTLINE_DSN
-})
+// Reads FAULTLINE_DSN and FAULTLINE_BASE_URL from env
+Faultline.init()
 
 // Manual capture
 try {
   await riskyThing()
 } catch (err) {
-  await fl.capture(err, { route: "/api/example" })
+  Faultline.capture(err, { route: "/api/checkout" })
 }
 
-// Wrap a handler
-export const POST = fl.withCapture(async (req: Request) => {
-  // thrown errors are captured and rethrown
+// Wrap a handler (error captured + rethrown)
+export const POST = Faultline.withCapture(async (req: Request) => {
+  // ...
 })
 ```
+
+The SDK is **zero-dependency**, under 3KB, and works in Node, Bun, Deno, and Edge runtimes.
+
+---
+
+## Features
+
+- **Error inbox** — fingerprint-based deduplication keeps noise down
+- **Alerts** — Slack, Discord, and Email via configurable thresholds
+- **Multi-project** — one DSN per project, one dashboard
+- **Self-hosted** — your data never leaves your infrastructure
+- **Zero-dep SDK** — safe to add to any project
 
 ---
 
@@ -50,9 +62,14 @@ export const POST = fl.withCapture(async (req: Request) => {
 
 ```bash
 # Start Postgres and Redis
-docker compose -f docker-compose.yml up -d
+docker compose up -d db redis
 
-# Run migrations (or the API will auto-migrate on boot)
+# Create your local .env files
+cp apps/api/.env.example apps/api/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/web/.env.example apps/web/.env
+
+# Run migrations
 bun run --cwd apps/api db:migrate
 
 # Start all services
@@ -63,22 +80,27 @@ bun run dev
 |---------|-----|
 | Dashboard | `http://localhost:3000` |
 | API | `http://localhost:4000` |
-| Worker | background — consumes `alert.deliver` queue |
 
 ---
 
 ## Architecture
 
 ```
-SDK → POST /ingest/:dsn → api (Bun + Hono) → Postgres (errors, projects, alerts)
-                           api → Redis (rate counters) → BullMQ queue
-                                                        → worker (Bun + BullMQ) → Slack / Discord / Email
-web (Next.js) → api (dashboard data)
+SDK → POST /ingest/:dsn → api (Bun + Hono) → Postgres
+                           api → Redis (counters) → BullMQ
+                                                   → worker (Bun + BullMQ) → Slack/Discord/Email
+web (Next.js 14) → api (dashboard data)
 ```
 
-- **`apps/api`** — Bun + Hono: ingest, CRUD APIs, queue producer
+- **`apps/api`** — Bun + Hono: ingest endpoint, CRUD APIs, queue producer
 - **`apps/web`** — Next.js 14: dashboard UI
 - **`apps/worker`** — Bun + BullMQ: alert delivery
-- **`packages/sdk`** — `faultline` npm package: zero-dep error capture
+- **`packages/sdk`** — `faultline` npm package
 
-Full documentation: [docs/SYSTEM.md](docs/SYSTEM.md)
+Full docs: [docs/SYSTEM.md](docs/SYSTEM.md)
+
+---
+
+## License
+
+MIT © faultline

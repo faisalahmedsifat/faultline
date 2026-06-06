@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
@@ -14,7 +14,9 @@ const errorStatusSchema = z.enum(["open", "ignored", "resolved"])
 const listErrorsQuerySchema = z.object({
   projectId: z.string().min(1),
   status: errorStatusSchema.optional(),
-  env: z.string().min(1).optional()
+  env: z.string().min(1).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20)
 })
 
 const errorParamsSchema = z.object({
@@ -76,26 +78,37 @@ errorsRouter.get("/api/errors", async (c) => {
     filters.push(eq(errors.env, query.data.env))
   }
 
-  const rows = await db
-    .select({
-      id: errors.id,
-      projectId: errors.projectId,
-      title: errors.title,
-      message: errors.message,
-      route: errors.route,
-      file: errors.file,
-      line: errors.line,
-      env: errors.env,
-      level: errors.level,
-      status: errors.status,
-      count: errors.count,
-      userCount: errors.userCount,
-      firstSeen: errors.firstSeen,
-      lastSeen: errors.lastSeen
-    })
-    .from(errors)
-    .where(and(...filters))
-    .orderBy(desc(errors.lastSeen))
+  const where = and(...filters)
+  const { page, pageSize } = query.data
+
+  const [rows, [totalRow]] = await Promise.all([
+    db
+      .select({
+        id: errors.id,
+        projectId: errors.projectId,
+        title: errors.title,
+        message: errors.message,
+        route: errors.route,
+        file: errors.file,
+        line: errors.line,
+        env: errors.env,
+        level: errors.level,
+        status: errors.status,
+        count: errors.count,
+        userCount: errors.userCount,
+        firstSeen: errors.firstSeen,
+        lastSeen: errors.lastSeen
+      })
+      .from(errors)
+      .where(where)
+      .orderBy(desc(errors.lastSeen))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ total: sql<number>`count(*)` }).from(errors).where(where)
+  ])
+
+  const total = Number(totalRow.total)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return jsonOk(c, {
     projectId: query.data.projectId,
@@ -103,6 +116,7 @@ errorsRouter.get("/api/errors", async (c) => {
       status: query.data.status ?? null,
       env: query.data.env ?? null
     },
+    pagination: { page, pageSize, total, totalPages },
     errors: rows.map((row) => ({
       ...row,
       status: row.status as ErrorListItemDto["status"],

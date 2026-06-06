@@ -29,9 +29,15 @@ export default async function ProjectsPage() {
       {error && <div className="toast toast-error mb-4">{error}</div>}
 
       {projects.length === 0 && !error ? (
-        <div className="text-center py-16 text-white/60">
-          <h3 className="text-lg font-medium text-white/80 mb-2">No projects yet</h3>
-          <p className="text-sm">Create your first project above to get started.</p>
+        <div className="text-center py-12">
+          <div className="text-5xl mb-4">📥</div>
+          <h3 className="text-lg font-medium text-white/80 mb-2">
+            Your error inbox starts here
+          </h3>
+          <p className="text-sm text-white/50 max-w-md mx-auto">
+            Create a project above to get a DSN. Then install the SDK in your app and
+            every production error will show up right here.
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
