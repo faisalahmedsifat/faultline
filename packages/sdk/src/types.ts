@@ -20,11 +20,15 @@ export type IngestPayload = {
 }
 
 export type FaultlineOptions = {
+  baseUrl?: string
   dsn?: string
   env?: string
   enabled?: boolean
   debug?: boolean
   fetch?: typeof fetch
+  onBeforeCapture?: (payload: IngestPayload) => IngestPayload | void
+  onAfterCapture?: (payload: IngestPayload) => void
+  onCaptureError?: (error: Error, payload: IngestPayload) => void
 }
 
 export type ExpressLikeRequest = {

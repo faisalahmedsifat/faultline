@@ -1,0 +1,8 @@
+{
+  "name": "fl-test",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "faultline": "../../packages/sdk"
+  }
+}

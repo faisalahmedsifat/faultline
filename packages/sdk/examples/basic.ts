@@ -1,14 +1,16 @@
 import { Faultline } from "../src/index"
 
-const faultline = new Faultline({
-  dsn: process.env.FAULTLINE_DSN,
-  env: process.env.NODE_ENV,
-  debug: true
-})
+// Zero config — reads FAULTLINE_DSN and FAULTLINE_BASE_URL from env
+// Set FAULTLINE_DSN=your_project_key and FAULTLINE_BASE_URL=http://localhost:4000
+const faultline = new Faultline({ debug: true })
 
-void faultline.capture(new Error("Example error"), {
+// Or explicit:
+// const faultline = new Faultline({
+//   dsn: "LV0l2yhx7QtWCkoumWCw660e",
+//   baseUrl: "http://localhost:4000"
+// })
+
+await faultline.capture(new Error("Example error"), {
   route: "/api/example",
-  metadata: {
-    example: true
-  }
+  metadata: { example: true }
 })

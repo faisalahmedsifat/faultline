@@ -10,16 +10,29 @@ type NormalizedError = {
 }
 
 export class FaultlineClient {
-  readonly options: Required<Pick<FaultlineOptions, "enabled" | "debug" | "env">> &
-    Pick<FaultlineOptions, "dsn" | "fetch">
+  readonly options: {
+    dsn: string | undefined
+    baseUrl: string | undefined
+    env: string
+    enabled: boolean
+    debug: boolean
+    fetch: typeof fetch | undefined
+    onBeforeCapture: ((payload: IngestPayload) => IngestPayload | void) | undefined
+    onAfterCapture: ((payload: IngestPayload) => void) | undefined
+    onCaptureError: ((error: Error, payload: IngestPayload) => void) | undefined
+  }
 
   constructor(options: FaultlineOptions = {}) {
     this.options = {
-      dsn: options.dsn,
-      env: options.env ?? "production",
+      dsn: options.dsn ?? process.env.FAULTLINE_DSN,
+      baseUrl: options.baseUrl ?? process.env.FAULTLINE_BASE_URL ?? "https://faultline.dev",
+      env: options.env ?? process.env.NODE_ENV ?? "production",
       enabled: options.enabled ?? true,
       debug: options.debug ?? false,
-      fetch: options.fetch
+      fetch: options.fetch,
+      onBeforeCapture: options.onBeforeCapture,
+      onAfterCapture: options.onAfterCapture,
+      onCaptureError: options.onCaptureError
     }
   }
 
@@ -29,16 +42,25 @@ export class FaultlineClient {
     }
 
     if (!this.options.dsn) {
-      this.warn("Faultline DSN is not configured")
+      this.warn("FAULTLINE_DSN is not set")
       return Promise.resolve()
     }
 
-    const payload = buildPayload(error, {
+    let payload = buildPayload(error, {
       ...context,
       env: this.options.env
     })
 
+    if (this.options.onBeforeCapture) {
+      const modified = this.options.onBeforeCapture(payload)
+      if (modified) payload = modified
+    }
+
     return this.send(payload)
+  }
+
+  private buildIngestUrl(): string {
+    return `${this.options.baseUrl}/ingest/${this.options.dsn}`
   }
 
   private async send(payload: IngestPayload) {
@@ -50,17 +72,18 @@ export class FaultlineClient {
     }
 
     try {
-      await fetchImpl(this.options.dsn as string, {
+      await fetchImpl(this.buildIngestUrl(), {
         method: "POST",
         headers: {
           "content-type": "application/json"
         },
         body: JSON.stringify(payload)
       })
+      this.options.onAfterCapture?.(payload)
     } catch (error) {
-      this.warn(
-        `Faultline capture failed: ${error instanceof Error ? error.message : "unknown error"}`
-      )
+      const err = error instanceof Error ? error : new Error(String(error))
+      this.options.onCaptureError?.(err, payload)
+      this.warn(`Faultline capture failed: ${err.message}`)
     }
   }
 
