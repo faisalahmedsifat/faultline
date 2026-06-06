@@ -9,6 +9,7 @@ import { jsonOk } from "../lib/http"
 import { createId } from "../lib/id"
 import { buildDsnUrl } from "../lib/project"
 import { createToken } from "../lib/tokens"
+import { parseJsonBody } from "../middleware/parse-json"
 
 const projectParamsSchema = z.object({
   id: z.string().min(1)
@@ -45,18 +46,7 @@ projectsRouter.get("/api/projects", async (c) => {
 })
 
 projectsRouter.post("/api/projects", async (c) => {
-  let rawBody: unknown
-
-  try {
-    rawBody = await c.req.json()
-  } catch {
-    throw new AppError({
-      code: "invalid_json",
-      message: "Request body must be valid JSON",
-      statusCode: 400
-    })
-  }
-
+  const rawBody = await parseJsonBody(c)
   const payload = createProjectSchema.parse(rawBody)
 
   const [project] = await db

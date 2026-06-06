@@ -28,8 +28,7 @@ export const alertQueue = new Queue<AlertDeliveryJob>(ALERT_DELIVER_QUEUE, {
       type: "exponential",
       delay: 5000
     },
-    removeOnComplete: 100,
-    removeOnFail: 500
+    removeOnComplete: 100
   }
 })
 

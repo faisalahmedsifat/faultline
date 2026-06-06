@@ -1,48 +1,48 @@
 import { FaultlineClient } from "./client"
-import type { CaptureContext, FaultlineOptions } from "./types"
+import type { CaptureContext, FaultlineEvents, FaultlineOptions } from "./types"
 
-type FaultlineEvent = "beforeCapture" | "afterCapture" | "captureError"
-type EventHandler = (payload: Record<string, unknown>) => void
+type EventHandler<E extends keyof FaultlineEvents> = (payload: FaultlineEvents[E]) => void
 
-// ── Faultline (singleton + observer) ──
-
+/**
+ * # Pattern: Singleton + Observer
+ * # Problem: Error capture must work from anywhere without passing an instance,
+ *   and consumers need hooks to filter/enrich/log events.
+ * # Solution: Faultline.init() creates a global singleton; Faultline.on() registers
+ *   typed observers; Faultline.capture() delegates to the singleton.
+ * # Trade-off: Global mutable state — justified because error tracking is
+ *   a cross-cutting concern like logging. Multiple instances still work via constructor.
+ */
 export class Faultline {
   private static client: FaultlineClient | null = null
-  private static listeners = new Map<FaultlineEvent, Set<EventHandler>>()
+  private static listeners = new Map<keyof FaultlineEvents, Set<EventHandler<any>>>()
 
-  static init(options: FaultlineOptions = {}) {
-    if (Faultline.client) {
-      if (options.debug) {
-        console.warn("Faultline already initialized — re-initializing with new options")
-      }
-    }
+  // ── Singleton ──
 
+  static init(options: FaultlineOptions = {}): typeof Faultline {
     Faultline.client = new FaultlineClient({
       ...options,
       onBeforeCapture: (payload) => {
-        Faultline.emit("beforeCapture", { ...payload })
+        Faultline.emit("beforeCapture", payload)
         return payload
       },
       onAfterCapture: (payload) => {
-        Faultline.emit("afterCapture", { ...payload })
+        Faultline.emit("afterCapture", payload)
       },
       onCaptureError: (error, payload) => {
         Faultline.emit("captureError", { error: error.message, ...payload })
       }
     })
-
     return Faultline
   }
 
   static capture(error: unknown, context: CaptureContext = {}) {
-    const client = Faultline.client
-    if (!client) {
+    if (!Faultline.client) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
         console.warn("Faultline not initialized — call Faultline.init() first")
       }
       return Promise.resolve()
     }
-    return client.capture(error, context)
+    return Faultline.client.capture(error, context)
   }
 
   static withCapture<TArgs extends unknown[], TResult>(
@@ -61,7 +61,12 @@ export class Faultline {
   }
 
   static expressHandler() {
-    return async (error: unknown, req: ExpressLikeRequest, _res: unknown, next: ExpressLikeNext) => {
+    return async (
+      error: unknown,
+      req: { originalUrl?: string; url?: string; route?: { path?: string } },
+      _res: unknown,
+      next: (error?: unknown) => void
+    ) => {
       await Faultline.capture(error, {
         route: req.originalUrl ?? req.route?.path ?? req.url
       })
@@ -69,7 +74,12 @@ export class Faultline {
     }
   }
 
-  static on(event: FaultlineEvent, handler: EventHandler) {
+  // ── Observer ──
+
+  static on<E extends keyof FaultlineEvents>(
+    event: E,
+    handler: EventHandler<E>
+  ): () => void {
     if (!Faultline.listeners.has(event)) {
       Faultline.listeners.set(event, new Set())
     }
@@ -77,28 +87,32 @@ export class Faultline {
     return () => Faultline.off(event, handler)
   }
 
-  static off(event: FaultlineEvent, handler: EventHandler) {
+  static off<E extends keyof FaultlineEvents>(
+    event: E,
+    handler: EventHandler<E>
+  ) {
     Faultline.listeners.get(event)?.delete(handler)
   }
 
-  static emit(event: FaultlineEvent, payload: Record<string, unknown>) {
+  private static emit<E extends keyof FaultlineEvents>(
+    event: E,
+    payload: FaultlineEvents[E]
+  ) {
     Faultline.listeners.get(event)?.forEach((fn) => {
-      try {
-        fn(payload)
-      } catch {
-        // observer errors must never propagate
-      }
+      try { fn(payload) } catch { /* observer errors must never propagate */ }
     })
   }
 
-  private client: FaultlineClient | null = null
+  // ── Instance (isolated, for testing or multi-project use) ──
+
+  private client: FaultlineClient
 
   constructor(options: FaultlineOptions = {}) {
     this.client = new FaultlineClient(options)
   }
 
   capture(error: unknown, context: CaptureContext = {}) {
-    return this.client!.capture(error, context)
+    return this.client.capture(error, context)
   }
 
   withCapture = Faultline.withCapture
@@ -119,13 +133,6 @@ function inferContext(args: unknown[]): CaptureContext {
   return {}
 }
 
-type ExpressLikeRequest = {
-  originalUrl?: string
-  url?: string
-  route?: { path?: string }
-}
-type ExpressLikeNext = (error?: unknown) => void
-
 export type { CaptureContext, FaultlineOptions }
+export type { IngestPayload, FaultlineEvents } from "./types"
 export { FaultlineClient } from "./client"
-export type { IngestPayload } from "./types"

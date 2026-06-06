@@ -31,11 +31,15 @@ export type FaultlineOptions = {
   onCaptureError?: (error: Error, payload: IngestPayload) => void
 }
 
+export type FaultlineEvents = {
+  beforeCapture: IngestPayload
+  afterCapture: IngestPayload
+  captureError: IngestPayload & { error: string }
+}
+
 export type ExpressLikeRequest = {
   originalUrl?: string
   url?: string
   route?: { path?: string }
 }
-
 export type ExpressLikeNext = (error?: unknown) => void
-

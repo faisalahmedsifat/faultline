@@ -6,6 +6,8 @@ import { db } from "../db/client"
 import { errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
+import { parseJsonBody } from "../middleware/parse-json"
+import { assertProjectExists } from "../lib/project"
 
 const errorStatusSchema = z.enum(["open", "ignored", "resolved"])
 
@@ -163,18 +165,7 @@ errorsRouter.get("/api/errors/:id", async (c) => {
 errorsRouter.patch("/api/errors/:id", async (c) => {
   const params = errorParamsSchema.parse(c.req.param())
 
-  let rawBody: unknown
-
-  try {
-    rawBody = await c.req.json()
-  } catch {
-    throw new AppError({
-      code: "invalid_json",
-      message: "Request body must be valid JSON",
-      statusCode: 400
-    })
-  }
-
+  const rawBody = await parseJsonBody(c)
   const payload = patchErrorSchema.parse(rawBody)
 
   const [row] = await db
@@ -217,20 +208,3 @@ errorsRouter.patch("/api/errors/:id", async (c) => {
     }
   })
 })
-
-async function assertProjectExists(projectId: string) {
-  const [project] = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1)
-
-  if (!project) {
-    throw new AppError({
-      code: "project_not_found",
-      message: "Project not found",
-      statusCode: 404
-    })
-  }
-}
-

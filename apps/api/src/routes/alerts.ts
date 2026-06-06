@@ -7,6 +7,8 @@ import { alerts, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
 import { createId } from "../lib/id"
+import { parseJsonBody } from "../middleware/parse-json"
+import { assertProjectExists } from "../lib/project"
 
 const channelSchema = z.enum(["slack", "email", "discord"])
 
@@ -100,18 +102,7 @@ alertsRouter.get("/api/alerts", async (c) => {
 })
 
 alertsRouter.put("/api/alerts", async (c) => {
-  let rawBody: unknown
-
-  try {
-    rawBody = await c.req.json()
-  } catch {
-    throw new AppError({
-      code: "invalid_json",
-      message: "Request body must be valid JSON",
-      statusCode: 400
-    })
-  }
-
+  const rawBody = await parseJsonBody(c)
   const payload = replaceAlertsSchema.parse(rawBody)
 
   await assertProjectExists(payload.projectId)
@@ -149,22 +140,6 @@ alertsRouter.put("/api/alerts", async (c) => {
     alerts: result as AlertDto[]
   })
 })
-
-async function assertProjectExists(projectId: string) {
-  const [project] = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1)
-
-  if (!project) {
-    throw new AppError({
-      code: "project_not_found",
-      message: "Project not found",
-      statusCode: 404
-    })
-  }
-}
 
 function isValidWebhookUrl(value: string) {
   try {

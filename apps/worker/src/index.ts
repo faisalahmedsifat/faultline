@@ -19,11 +19,13 @@ async function start() {
   const worker = new Worker<AlertDeliveryJob>(
     ALERT_DELIVER_QUEUE,
     async (job) => {
-      await processAlertDelivery(job.data)
+      await processAlertDelivery(job)
     },
     {
       connection: workerConnection,
-      concurrency: 10
+      concurrency: 10,
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 1000 } // keep failed jobs for inspection
     }
   )
 
@@ -49,6 +51,7 @@ async function start() {
     logger.error("worker.job_failed", {
       jobId: job?.id ?? null,
       errorId: job?.data.errorId ?? null,
+      attemptsMade: job?.attemptsMade ?? 0,
       message: error.message
     })
   })
