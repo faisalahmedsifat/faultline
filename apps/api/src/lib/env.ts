@@ -6,6 +6,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   APP_BASE_URL: z.string().url().default("http://localhost:3000"),
+  INGEST_BASE_URL: z.string().url().optional(),
   CORS_ORIGIN: z.string().optional()
 })
 

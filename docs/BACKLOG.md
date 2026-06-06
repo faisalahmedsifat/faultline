@@ -235,46 +235,51 @@ Acceptance criteria:
 
 ## Milestone 6: Web Dashboard
 
-### BL-022 Web app bootstrap
+### BL-022 Web app bootstrap ✅
 - Create Next.js app shell
 - Add layout, navigation, and loading/error states
 - Add API client wrappers around `api`
+- Implemented: `apps/web/lib/api.ts`, layout shell with navigation, styled dashboard shell
 
 Acceptance criteria:
 - `web` starts and can talk to `api`
 - No direct database or Redis access exists in `web`
 
-### BL-023 Projects flow
+### BL-023 Projects flow ✅
 - Build project list and create flow
 - Show DSN and rotate action
 - Add delete flow with confirmation
+- Implemented: `/projects` page, `CreateProjectForm`, `ProjectCard` with DSN copy/rotate/delete
 
 Acceptance criteria:
 - New user can create first project from the UI
 - DSN rotation result is visible immediately
 
-### BL-024 Error inbox view
+### BL-024 Error inbox view ✅
 - Build project error list page
 - Add status and env filters
 - Show count, title, route, last seen, and status
+- Implemented: `/projects/[projectId]` page, `ErrorTable`, `ErrorFilters`, `StatusBadge`
 
 Acceptance criteria:
 - Inbox is usable with real API data
 - Empty states and loading states are handled
 
-### BL-025 Error detail view
+### BL-025 Error detail view ✅
 - Build error detail page
 - Show stack trace, metadata, user info, and timeline fields
 - Add status mutation controls
+- Implemented: `/projects/[projectId]/errors/[errorId]` page, `StatusChanger`, `StackTrace`, `MetadataViewer`
 
 Acceptance criteria:
 - Detail page renders all core error fields
 - Status updates reflect immediately in the UI
 
-### BL-026 Alert settings UI
+### BL-026 Alert settings UI ✅
 - Build per-project alert configuration UI
 - Support Slack, Discord, and email destinations
 - Expose threshold and enabled settings
+- Implemented: `/projects/[projectId]/settings` page, `AlertConfigForm` with channel rows, validation, toggle
 
 Acceptance criteria:
 - User can configure all three channel types from the dashboard
@@ -282,10 +287,11 @@ Acceptance criteria:
 
 ## Milestone 7: Production Readiness
 
-### BL-027 Startup migrations and service boot flow
+### BL-027 Startup migrations and service boot flow ✅
 - Ensure migrations run on boot for `api`
 - Ensure compose dependency order is adequate
 - Decide failure behavior if db is unavailable
+- Implemented: `runMigrations()` in `db/client.ts` using drizzle programmatic migrator, called before `createApp()` in `index.ts`
 
 Acceptance criteria:
 - Fresh deploy can initialize schema automatically
@@ -309,10 +315,11 @@ Acceptance criteria:
 - MVP critical path is exercised end to end
 - Regressions in the main flow are catchable before release
 
-### BL-030 Docs and quickstart
+### BL-030 Docs and quickstart ✅
 - Write README
 - Document local dev, production deploy, SDK usage, and environment variables
 - Include Resend setup instructions for email alerts
+- Implemented: `README.md` with quickstart, SDK usage, local dev instructions, architecture overview
 
 Acceptance criteria:
 - A new user can run the system from docs alone

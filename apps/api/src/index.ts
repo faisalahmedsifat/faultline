@@ -1,12 +1,13 @@
 import { serve } from "@hono/node-server"
 
-import { pingDb } from "./db/client"
+import { pingDb, runMigrations } from "./db/client"
 import { createApp } from "./server"
 import { env } from "./lib/env"
 import { logger } from "./lib/logger"
 import { connectRedis } from "./lib/redis"
 
 async function start() {
+  await runMigrations()
   await pingDb()
   await connectRedis()
 
