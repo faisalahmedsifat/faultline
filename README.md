@@ -140,8 +140,7 @@ curl -X POST http://localhost:4000/ingest/<dsn> \
 
 ## Documentation
 
-- [System design](docs/SYSTEM.md) — architecture, data model, ingest flow, DSN design
-- [Backlog](docs/BACKLOG.md) — feature status and roadmap
+- [Architecture](docs/ARCHITECTURE.md) — system design, data model, API reference, SDK design
 
 ---
 
