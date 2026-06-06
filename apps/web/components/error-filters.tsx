@@ -4,7 +4,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 
 export function ErrorFilters({
   page,
@@ -19,7 +27,7 @@ export function ErrorFilters({
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams)
-    if (value) {
+    if (value && value !== "all") {
       params.set(key, value)
     } else {
       params.delete(key)
@@ -40,23 +48,42 @@ export function ErrorFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg rounded-xl border border-border flex items-center gap-0 overflow-hidden">
         <Tabs
           value={searchParams.get("status") ?? "all"}
           onValueChange={(v) => setParam("status", v === "all" ? "" : v)}
         >
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="ignored">Ignored</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved</TabsTrigger>
+          <TabsList className="bg-transparent h-10 px-2">
+            <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+            <TabsTrigger value="open" className="text-xs">Open</TabsTrigger>
+            <TabsTrigger value="ignored" className="text-xs">Ignored</TabsTrigger>
+            <TabsTrigger value="resolved" className="text-xs">Resolved</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="relative w-48">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        <Separator orientation="vertical" className="h-5" />
+
+        <Select
+          value={searchParams.get("env") ?? "all"}
+          onValueChange={(v) => setParam("env", v === "all" ? "" : v ?? "")}
+        >
+          <SelectTrigger className="h-8 w-[110px] border-0 bg-transparent text-xs mx-2 shadow-none">
+            <SelectValue placeholder="Env" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All envs</SelectItem>
+            <SelectItem value="production">production</SelectItem>
+            <SelectItem value="staging">staging</SelectItem>
+            <SelectItem value="development">development</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <div className="relative flex-1 ml-auto">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
           <Input
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-10 border-0 bg-transparent text-xs shadow-none rounded-none focus:ring-0"
             placeholder="Search errors..."
             value={searchParams.get("search") ?? ""}
             onChange={(e) => setParam("search", e.target.value)}
@@ -65,26 +92,30 @@ export function ErrorFilters({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center gap-2 text-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => goToPage(page - 1)}
-          >
-            Previous
-          </Button>
+        <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs tabular-nums">
-            {page} of {totalPages}
+            Page {page} of {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => goToPage(page + 1)}
-          >
-            Next
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon-xs"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="size-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              disabled={page >= totalPages}
+              onClick={() => goToPage(page + 1)}
+              aria-label="Next page"
+            >
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

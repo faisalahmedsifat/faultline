@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/sidebar"
+import { MobileNav } from "@/components/mobile-nav"
 import { getProjects } from "@/lib/api"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -14,13 +15,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-screen">
       <Sidebar projects={projects} />
-      <main className="flex-1 min-w-0">
-        <div className="md:hidden px-4 pt-4 pb-2 border-b border-border">
-          <a href="/" className="font-bold text-sm tracking-tight">
-            fault<span className="text-primary">line</span>
-          </a>
+      <main className="flex-1 min-w-0 relative">
+        <MobileNav projects={projects} />
+        <div className="animate-fade-in">
+          {children}
         </div>
-        {children}
       </main>
     </div>
   )

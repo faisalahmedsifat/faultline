@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -10,11 +10,15 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getError, updateErrorStatus, type ErrorDetailDto, type ErrorStatus } from "@/lib/api"
 import { toast } from "sonner"
+import {
+  ChevronDown, Copy, Check, CheckCircle, EyeOff, RotateCcw,
+  FileText, Globe, Calendar, Users, Hash, Layers
+} from "lucide-react"
 
-const statusVariant: Record<string, "destructive" | "secondary" | "outline"> = {
+const statusBadgeVariant: Record<string, "destructive" | "warning" | "success"> = {
   open: "destructive",
-  ignored: "outline",
-  resolved: "secondary"
+  ignored: "warning",
+  resolved: "success"
 }
 
 export function ErrorSheet({ projectId }: { projectId: string }) {
@@ -23,6 +27,7 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
   const errorId = searchParams.get("error")
   const [error, setError] = useState<ErrorDetailDto | null>(null)
   const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!errorId) {
@@ -37,15 +42,28 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
   }, [errorId])
 
   async function changeStatus(status: ErrorStatus) {
-    if (!errorId) return
+    if (!errorId || !error) return
+    const prev = error.status
+    setError({ ...error, status })
     try {
       await updateErrorStatus(errorId, status)
       router.refresh()
       toast.success(`Marked as ${status}`)
     } catch (err) {
+      setError({ ...error, status: prev })
       toast.error(err instanceof Error ? err.message : "Status update failed")
     }
   }
+
+  const copyStack = useCallback(() => {
+    if (!error) return
+    const text = error.resolvedStack
+      ? error.resolvedStack.map((f: any) => `  at ${f.fn} (${f.file}:${f.line}:${f.col})`).join("\n")
+      : error.stack || ""
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }, [error])
 
   function close() {
     const params = new URLSearchParams(searchParams)
@@ -55,190 +73,246 @@ export function ErrorSheet({ projectId }: { projectId: string }) {
 
   return (
     <Sheet open={!!errorId} onOpenChange={(open) => !open && close()}>
-      <SheetContent className="w-full sm:max-w-lg p-0 gap-0">
+      <SheetContent className="w-full sm:max-w-xl p-0 gap-0" side="right" resizable defaultWidth={576} minWidth={380} maxWidth={960}>
         <ScrollArea className="h-screen">
-          {loading && (
-            <div className="p-6 space-y-4">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          )}
+          <div className="flex flex-col min-h-full">
+            {loading && (
+              <div className="p-6 space-y-4">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            )}
 
-          {error && (
-            <div className="p-6">
-              <SheetHeader className="mb-4">
-                <div className="flex items-center gap-2">
-                  <SheetTitle className="text-lg">{error.title}</SheetTitle>
-                  <Badge variant={statusVariant[error.status]}>
-                    {error.status}
-                  </Badge>
-                </div>
-                {error.message && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {error.message}
-                  </p>
-                )}
-              </SheetHeader>
-
-              <Separator className="my-4" />
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {error.release && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Release</p>
-                      <p className="font-medium text-primary">{error.release}</p>
-                    </div>
-                  )}
-                  {error.file && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-mono text-xs">
-                        {error.file}{error.line ? `:${error.line}` : ""}
-                      </p>
-                    </div>
-                  )}
-                  {error.route && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Route</p>
-                      <p className="font-mono text-xs">{error.route}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-muted-foreground">Environment</p>
-                    <p>{error.env ?? "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Occurrences</p>
-                    <p>{error.count}×</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Users affected</p>
-                    <p>{error.userCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">First seen</p>
-                    <p className="text-xs">
-                      {new Date(error.firstSeen).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {error.resolvedStack && error.resolvedStack.length > 0 ? (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        Resolved Stack Trace
-                      </p>
-                      {error.resolvedStack.map((frame, i) => {
-                        const f = frame as unknown as { file: string; line: number; col: number; fn: string; sourceContext: string | null }
-                        return (
-                          <div key={i} className="mb-3">
-                            <p className="text-xs font-mono text-primary mb-1">
-                              at {f.fn} ({f.file}:{f.line}:{f.col})
-                            </p>
-                            {f.sourceContext && (
-                              <pre className="text-xs font-mono bg-black/20 rounded p-2 overflow-x-auto whitespace-pre-wrap">
-                                {f.sourceContext}
-                              </pre>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                ) : error.stack ? (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        Stack Trace
-                      </p>
-                      <pre className="text-xs font-mono bg-black/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-64">
-                        {error.stack}
-                      </pre>
-                    </div>
-                  </>
-                ) : null}
-
-                {error.metadata && Object.keys(error.metadata).length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        Metadata
-                      </p>
-                      <pre className="text-xs font-mono bg-black/30 rounded-lg p-3 overflow-x-auto max-h-48">
-                        {JSON.stringify(error.metadata, null, 2)}
-                      </pre>
-                    </div>
-                  </>
-                )}
-
-                {error.users.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        Users
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {error.users.map((u) => (
-                          <code
-                            key={u}
-                            className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono"
-                          >
-                            {u}
-                          </code>
-                        ))}
+            {error && (
+              <>
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-surface border-b border-border px-6 py-4">
+                  <SheetHeader className="mb-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <SheetTitle className="text-base truncate">{error.title}</SheetTitle>
+                          <Badge variant={statusBadgeVariant[error.status]} className="shrink-0">
+                            {error.status}
+                          </Badge>
+                        </div>
+                        {error.message && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {error.message}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </>
-                )}
+                  </SheetHeader>
 
-                <Separator />
+                  {/* Quick actions */}
+                  <div className="flex items-center gap-1.5 mt-3">
+                    {error.status !== "resolved" && (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => changeStatus("resolved")}
+                        className="gap-1.5"
+                      >
+                        <CheckCircle className="size-3.5" />
+                        Resolve
+                      </Button>
+                    )}
+                    {error.status !== "ignored" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeStatus("ignored")}
+                        className="gap-1.5"
+                      >
+                        <EyeOff className="size-3.5" />
+                        Ignore
+                      </Button>
+                    )}
+                    {error.status !== "open" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeStatus("open")}
+                        className="gap-1.5"
+                      >
+                        <RotateCcw className="size-3.5" />
+                        Reopen
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
-                <div className="flex gap-2">
-                  {error.status !== "ignored" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => changeStatus("ignored")}
-                    >
-                      Ignore
-                    </Button>
+                {/* Body */}
+                <div className="p-6 flex-1">
+                  {/* Metadata */}
+                  <div className="space-y-3 mb-6">
+                    {error.release && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 w-28 shrink-0">
+                          <Layers className="size-3.5 text-muted-foreground/50" />
+                          <span className="text-xs text-muted-foreground">Release</span>
+                        </div>
+                        <span className="text-xs font-medium text-primary font-mono">{error.release}</span>
+                      </div>
+                    )}
+                    {error.file && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 w-28 shrink-0">
+                          <FileText className="size-3.5 text-muted-foreground/50" />
+                          <span className="text-xs text-muted-foreground">Location</span>
+                        </div>
+                        <span className="text-xs font-mono truncate">
+                          {error.file}{error.line ? `:${error.line}` : ""}
+                        </span>
+                      </div>
+                    )}
+                    {error.route && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 w-28 shrink-0">
+                          <Globe className="size-3.5 text-muted-foreground/50" />
+                          <span className="text-xs text-muted-foreground">Route</span>
+                        </div>
+                        <span className="text-xs font-mono truncate">{error.route}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-28 shrink-0">
+                        <Globe className="size-3.5 text-muted-foreground/50" />
+                        <span className="text-xs text-muted-foreground">Environment</span>
+                      </div>
+                      <span className="text-xs">{error.env ?? "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-28 shrink-0">
+                        <Hash className="size-3.5 text-muted-foreground/50" />
+                        <span className="text-xs text-muted-foreground">Occurrences</span>
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums">{error.count}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-28 shrink-0">
+                        <Users className="size-3.5 text-muted-foreground/50" />
+                        <span className="text-xs text-muted-foreground">Users</span>
+                      </div>
+                      <span className="text-xs tabular-nums">{error.userCount}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-28 shrink-0">
+                        <Calendar className="size-3.5 text-muted-foreground/50" />
+                        <span className="text-xs text-muted-foreground">First seen</span>
+                      </div>
+                      <span className="text-xs tabular-nums">
+                        {new Date(error.firstSeen).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stack Trace */}
+                  {(error.resolvedStack?.length || error.stack) ? (
+                    <>
+                      <Separator className="mb-4" />
+                      <details open>
+                        <summary className="flex items-center justify-between cursor-pointer list-none mb-3 group">
+                          <div className="flex items-center gap-1.5">
+                            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-0 -rotate-90" />
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              {error.resolvedStack?.length ? "Resolved Stack Trace" : "Stack Trace"}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="gap-1 opacity-60 hover:opacity-100"
+                            onClick={(e) => { e.preventDefault(); copyStack() }}
+                          >
+                            {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+                            {copied ? "Copied" : "Copy"}
+                          </Button>
+                        </summary>
+                        {error.resolvedStack?.length ? (
+                          <div className="bg-code-bg text-code-fg rounded-lg p-4 overflow-x-auto">
+                            {error.resolvedStack.map((frame, i) => {
+                              const f = frame as unknown as { file: string; line: number; col: number; fn: string; sourceContext: string | null }
+                              return (
+                                <div key={i} className="mb-3 last:mb-0">
+                                  <p className="text-xs font-mono">
+                                    <span className="text-muted-foreground/50 mr-2 tabular-nums select-none">{i + 1}</span>
+                                    <span className="text-primary">at {f.fn}</span>
+                                    <span className="text-muted-foreground/50"> ({f.file}:{f.line}:{f.col})</span>
+                                  </p>
+                                  {f.sourceContext && (
+                                    <pre className="text-xs font-mono bg-code-bg/80 border border-white/5 text-code-fg/70 rounded mt-1 p-2 overflow-x-auto whitespace-pre-wrap ml-5">
+                                      {f.sourceContext}
+                                    </pre>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <pre className="text-xs font-mono bg-code-bg text-code-fg rounded-lg p-4 overflow-x-auto whitespace-pre-wrap max-h-72">
+                            {error.stack}
+                          </pre>
+                        )}
+                      </details>
+                    </>
+                  ) : null}
+
+                  {/* Metadata */}
+                  {error.metadata && Object.keys(error.metadata).length > 0 && (
+                    <>
+                      <Separator className="my-4" />
+                      <details>
+                        <summary className="flex items-center gap-1.5 cursor-pointer list-none mb-3 group">
+                          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-0 -rotate-90" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Metadata
+                          </p>
+                        </summary>
+                        <pre className="text-xs font-mono bg-muted rounded-lg p-4 overflow-x-auto max-h-48">
+                          {JSON.stringify(error.metadata, null, 2)}
+                        </pre>
+                      </details>
+                    </>
                   )}
-                  {error.status !== "resolved" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => changeStatus("resolved")}
-                    >
-                      Resolve
-                    </Button>
-                  )}
-                  {error.status !== "open" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => changeStatus("open")}
-                    >
-                      Reopen
-                    </Button>
+
+                  {/* Users */}
+                  {error.users.length > 0 && (
+                    <>
+                      <Separator className="my-4" />
+                      <details>
+                        <summary className="flex items-center gap-1.5 cursor-pointer list-none mb-3 group">
+                          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-0 -rotate-90" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Affected Users ({error.users.length})
+                          </p>
+                        </summary>
+                        <div className="flex flex-wrap gap-1.5">
+                          {error.users.map((u) => (
+                            <code
+                              key={u}
+                              className="text-xs bg-muted px-2 py-1 rounded-md font-mono"
+                            >
+                              {u}
+                            </code>
+                          ))}
+                        </div>
+                      </details>
+                    </>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
 
-          {!loading && !error && (
-            <div className="p-6 text-center text-muted-foreground text-sm">
-              Error not found
-            </div>
-          )}
+            {!loading && !error && (
+              <div className="p-6 text-center text-muted-foreground text-sm py-20">
+                Error not found
+              </div>
+            )}
+          </div>
         </ScrollArea>
       </SheetContent>
     </Sheet>

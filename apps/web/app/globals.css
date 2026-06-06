@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -26,6 +28,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -40,55 +44,157 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-code-bg: var(--code-bg);
+  --color-code-fg: var(--code-fg);
+  --color-surface: var(--surface);
 }
 
 :root {
-  --background: 0 0% 98%;
-  --foreground: 240 10% 3.9%;
+  --background: 30 12% 98%;
+  --foreground: 24 8% 8%;
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 24 8% 8%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 24 100% 45%;
+  --popover-foreground: 24 8% 8%;
+  --primary: 24 95% 44%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 6% 10%;
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 6% 10%;
-  --destructive: 0 84% 60%;
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --ring: 24 100% 45%;
+  --secondary: 30 6% 95%;
+  --secondary-foreground: 24 6% 15%;
+  --muted: 30 6% 95%;
+  --muted-foreground: 24 4% 44%;
+  --accent: 30 6% 94%;
+  --accent-foreground: 24 6% 15%;
+  --destructive: 0 80% 58%;
+  --success: 152 56% 38%;
+  --warning: 38 92% 50%;
+  --border: 30 6% 90%;
+  --input: 30 6% 88%;
+  --ring: 24 95% 44%;
   --radius: 0.5rem;
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 5% 26%;
-  --sidebar-primary: 24 100% 45%;
+  --code-bg: 225 6% 13%;
+  --code-fg: 220 10% 92%;
+  --surface: 0 0% 100%;
+  --sidebar: 30 8% 97%;
+  --sidebar-foreground: 24 6% 26%;
+  --sidebar-primary: 24 95% 44%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 5% 96%;
-  --sidebar-accent-foreground: 240 6% 10%;
-  --sidebar-border: 240 6% 90%;
-  --sidebar-ring: 24 100% 45%;
+  --sidebar-accent: 30 8% 93%;
+  --sidebar-accent-foreground: 24 6% 12%;
+  --sidebar-border: 30 6% 90%;
+  --sidebar-ring: 24 95% 44%;
+  --chart-1: 24 95% 44%;
+  --chart-2: 152 56% 38%;
+  --chart-3: 30 40% 55%;
+  --chart-4: 45 80% 50%;
+  --chart-5: 0 70% 55%;
+}
+
+.dark {
+  --background: 24 6% 7%;
+  --foreground: 30 10% 93%;
+  --card: 24 5% 10%;
+  --card-foreground: 30 10% 93%;
+  --popover: 24 5% 10%;
+  --popover-foreground: 30 10% 93%;
+  --primary: 24 95% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 24 6% 14%;
+  --secondary-foreground: 30 8% 90%;
+  --muted: 24 6% 14%;
+  --muted-foreground: 24 5% 54%;
+  --accent: 24 6% 14%;
+  --accent-foreground: 30 8% 90%;
+  --destructive: 0 72% 51%;
+  --success: 152 56% 42%;
+  --warning: 38 92% 50%;
+  --border: 24 5% 17%;
+  --input: 24 5% 17%;
+  --ring: 24 95% 50%;
+  --code-bg: 225 6% 10%;
+  --code-fg: 220 10% 88%;
+  --surface: 24 5% 11%;
+  --sidebar: 24 6% 7%;
+  --sidebar-foreground: 30 8% 90%;
+  --sidebar-primary: 24 95% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 24 6% 13%;
+  --sidebar-accent-foreground: 30 8% 90%;
+  --sidebar-border: 24 5% 17%;
+  --sidebar-ring: 24 95% 50%;
+  --chart-1: 24 95% 50%;
+  --chart-2: 152 56% 42%;
+  --chart-3: 30 40% 55%;
+  --chart-4: 45 80% 50%;
+  --chart-5: 0 70% 55%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: 24 6% 7%;
+    --foreground: 30 10% 93%;
+    --card: 24 5% 10%;
+    --card-foreground: 30 10% 93%;
+    --popover: 24 5% 10%;
+    --popover-foreground: 30 10% 93%;
+    --primary: 24 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 24 6% 14%;
+    --secondary-foreground: 30 8% 90%;
+    --muted: 24 6% 14%;
+    --muted-foreground: 24 5% 54%;
+    --accent: 24 6% 14%;
+    --accent-foreground: 30 8% 90%;
+    --destructive: 0 72% 51%;
+    --success: 152 56% 42%;
+    --warning: 38 92% 50%;
+    --border: 24 5% 17%;
+    --input: 24 5% 17%;
+    --ring: 24 95% 50%;
+    --code-bg: 225 6% 10%;
+    --code-fg: 220 10% 88%;
+    --surface: 24 5% 11%;
+    --sidebar: 24 6% 7%;
+    --sidebar-foreground: 30 8% 90%;
+    --sidebar-primary: 24 95% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 24 6% 13%;
+    --sidebar-accent-foreground: 30 8% 90%;
+    --sidebar-border: 24 5% 17%;
+    --sidebar-ring: 24 95% 50%;
+    --chart-1: 24 95% 50%;
+    --chart-2: 152 56% 42%;
+    --chart-3: 30 40% 55%;
+    --chart-4: 45 80% 50%;
+    --chart-5: 0 70% 55%;
+  }
 }
 
 body {
   background:
-    radial-gradient(ellipse 80% 60% at 50% -15%, rgba(255, 111, 0, 0.08), transparent 55%),
-    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255, 140, 60, 0.04), transparent 50%),
-    linear-gradient(180deg, #fdfdfc 0%, #f8f7f5 30%, #f5f4f1 100%);
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 120, 20, 0.06), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 85%, rgba(255, 140, 60, 0.03), transparent 50%),
+    linear-gradient(180deg, hsl(30 12% 98%) 0%, hsl(30 8% 96%) 100%);
   background-attachment: fixed;
-  color: hsl(240 10% 3.9%);
+  color: hsl(var(--foreground));
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
 
+.dark body {
+  color: hsl(var(--foreground));
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -20%, rgba(255, 120, 20, 0.07), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255, 140, 60, 0.03), transparent 50%),
+    linear-gradient(180deg, hsl(24 6% 7%) 0%, hsl(24 5% 6%) 100%);
+}
+
 pre.code-block {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-geist-mono), monospace;
   font-size: 0.8125rem;
-  line-height: 1.5;
-  background: hsl(240 5% 96%);
-  border: 1px solid hsl(240 6% 90%);
+  line-height: 1.6;
+  background: hsl(var(--code-bg));
+  color: hsl(var(--code-fg));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
   padding: 1rem;
   overflow-x: auto;
@@ -97,11 +203,55 @@ pre.code-block {
 }
 
 .dsn {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-geist-mono), monospace;
   font-size: 0.8125rem;
-  background: hsl(240 5% 96%);
-  border: 1px solid hsl(240 6% 90%);
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   word-break: break-all;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--muted)) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-shimmer {
+    animation: none;
+  }
 }

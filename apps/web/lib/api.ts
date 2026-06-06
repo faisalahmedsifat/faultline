@@ -1,4 +1,5 @@
 const API_BASE = process.env.API_URL ?? "http://localhost:4000"
+const AUTH_TOKEN = process.env.AUTH_TOKEN
 
 // ---- Types ----
 
@@ -64,13 +65,18 @@ type ErrorFilters = {
 // ---- Internal ----
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    ...(init?.headers as Record<string, string> | undefined)
+  }
+  if (AUTH_TOKEN) {
+    headers["authorization"] = `Bearer ${AUTH_TOKEN}`
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     cache: "no-store",
-    headers: {
-      "content-type": "application/json",
-      ...init?.headers
-    }
+    headers
   })
 
   if (!res.ok) {
@@ -87,6 +93,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function getProjects(): Promise<{ projects: ProjectDto[] }> {
   return request("/api/projects")
+}
+
+export async function getProject(projectId: string): Promise<{ project: ProjectDto }> {
+  return request(`/api/projects/${projectId}`)
 }
 
 export async function createProject(name: string): Promise<{ project: ProjectDto }> {

@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createProject } from "@/lib/api"
+import { ArrowRight } from "lucide-react"
 
 export function CreateProjectForm() {
   const [name, setName] = useState("")
@@ -33,15 +34,16 @@ export function CreateProjectForm() {
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
       <Input
-        placeholder="My SaaS App"
+        placeholder="e.g. My SaaS App, API Server, Frontend..."
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={120}
         required
         className="flex-1"
       />
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="gap-1.5 shrink-0">
         {loading ? "Creating..." : "Create"}
+        {!loading && <ArrowRight className="size-3.5" />}
       </Button>
     </form>
   )
