@@ -3,7 +3,7 @@ import { QueueEvents, Worker, type Job } from "bullmq"
 import { env } from "./env"
 import { logger } from "./logger"
 import { processAlertDelivery } from "./processor"
-import { closeRedis, connectRedis, createRedisConnection } from "./redis"
+import { closeRedis, connectRedis, createRedisConnection, waitForConnection } from "./redis"
 import type { AlertDeliveryJob } from "./types"
 
 const ALERT_DELIVER_QUEUE = "alert.deliver"
@@ -13,8 +13,8 @@ async function start() {
 
   const workerConnection = createRedisConnection()
   const eventsConnection = createRedisConnection()
-  await workerConnection.connect()
-  await eventsConnection.connect()
+  await waitForConnection(workerConnection)
+  await waitForConnection(eventsConnection)
 
   const worker = new Worker<AlertDeliveryJob>(
     ALERT_DELIVER_QUEUE,

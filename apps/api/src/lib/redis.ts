@@ -3,24 +3,18 @@ import IORedis from "ioredis"
 import { env } from "./env"
 
 export const redisConnection = new IORedis(env.REDIS_URL, {
-  maxRetriesPerRequest: null,
-  lazyConnect: true
+  maxRetriesPerRequest: null
 })
 
-let connectPromise: Promise<void> | undefined
+export async function connectRedis() {
+  if (redisConnection.status === "ready") return
 
-export function connectRedis() {
-  if (!connectPromise) {
-    connectPromise = redisConnection.connect().catch((error) => {
-      connectPromise = undefined
-      throw error
-    })
-  }
-
-  return connectPromise
+  await new Promise<void>((resolve, reject) => {
+    redisConnection.once("ready", () => resolve())
+    redisConnection.once("error", (err) => reject(err))
+  })
 }
 
 export async function closeRedis() {
   await redisConnection.quit()
 }
-

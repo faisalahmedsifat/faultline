@@ -4,24 +4,19 @@ import { env } from "./env"
 
 function createRedisClient() {
   return new IORedis(env.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    lazyConnect: true
+    maxRetriesPerRequest: null
   })
 }
 
 export const redisConnection = createRedisClient()
 
-let connectPromise: Promise<void> | undefined
+export async function connectRedis() {
+  if (redisConnection.status === "ready") return
 
-export function connectRedis() {
-  if (!connectPromise) {
-    connectPromise = redisConnection.connect().catch((error: unknown) => {
-      connectPromise = undefined
-      throw error
-    })
-  }
-
-  return connectPromise
+  await new Promise<void>((resolve, reject) => {
+    redisConnection.once("ready", () => resolve())
+    redisConnection.once("error", (err) => reject(err))
+  })
 }
 
 export async function closeRedis() {
@@ -30,4 +25,13 @@ export async function closeRedis() {
 
 export function createRedisConnection() {
   return createRedisClient()
+}
+
+export async function waitForConnection(redis: IORedis) {
+  if (redis.status === "ready") return
+
+  await new Promise<void>((resolve, reject) => {
+    redis.once("ready", () => resolve())
+    redis.once("error", (err) => reject(err))
+  })
 }
