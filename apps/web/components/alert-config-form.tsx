@@ -3,6 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { replaceAlerts, type AlertDto, type AlertChannel } from "@/lib/api"
 
 type Row = {
@@ -13,44 +17,24 @@ type Row = {
   enabled: boolean
 }
 
-const CHANNEL_LABELS: Record<AlertChannel, string> = {
-  slack: "Slack",
-  discord: "Discord",
-  email: "Email"
-}
+const CHANNELS: { value: AlertChannel; label: string }[] = [
+  { value: "slack", label: "Slack" },
+  { value: "discord", label: "Discord" },
+  { value: "email", label: "Email" }
+]
 
 let rowCounter = 0
 
 function emptyRow(): Row {
-  return {
-    key: `new-${rowCounter++}`,
-    channel: "slack",
-    destination: "",
-    threshold: 10,
-    enabled: true
-  }
+  return { key: `new-${rowCounter++}`, channel: "slack", destination: "", threshold: 10, enabled: true }
 }
 
 function alertToRow(alert: AlertDto): Row {
-  return {
-    key: alert.id,
-    channel: alert.channel,
-    destination: alert.destination,
-    threshold: alert.threshold,
-    enabled: alert.enabled
-  }
+  return { key: alert.id, channel: alert.channel, destination: alert.destination, threshold: alert.threshold, enabled: alert.enabled }
 }
 
-export function AlertConfigForm({
-  projectId,
-  existing
-}: {
-  projectId: string
-  existing: AlertDto[]
-}) {
-  const [rows, setRows] = useState<Row[]>(
-    existing.length > 0 ? existing.map(alertToRow) : [emptyRow()]
-  )
+export function AlertConfigForm({ projectId, existing }: { projectId: string; existing: AlertDto[] }) {
+  const [rows, setRows] = useState<Row[]>(existing.length > 0 ? existing.map(alertToRow) : [emptyRow()])
   const [saving, setSaving] = useState(false)
   const router = useRouter()
 
@@ -58,28 +42,14 @@ export function AlertConfigForm({
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
   }
 
-  function removeRow(key: string) {
-    setRows((prev) => prev.filter((r) => r.key !== key))
-  }
-
-  function addRow() {
-    setRows((prev) => [...prev, emptyRow()])
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-
-    const validRows = rows.filter((r) => r.destination.trim())
-
     try {
+      const validRows = rows.filter((r) => r.destination.trim())
       await replaceAlerts(projectId, validRows)
       router.refresh()
-      if (validRows.length > 0) {
-        setRows(validRows.map(alertToRow as (a: unknown) => Row))
-      } else {
-        setRows([emptyRow()])
-      }
+      setRows(validRows.length > 0 ? validRows.map(alertToRow as (a: unknown) => Row) : [emptyRow()])
       toast.success("Alert configuration saved")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save alerts")
@@ -89,79 +59,76 @@ export function AlertConfigForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="space-y-3">
       {rows.map((row, i) => (
-        <div key={row.key} className="channel-row">
-          <div className="channel-row-header">
-            <h4 className="text-sm font-medium text-white/60 uppercase tracking-wider">
-              Channel {i + 1}
-            </h4>
-            <button type="button" className="btn btn-sm btn-danger" onClick={() => removeRow(row.key)}>
-              Remove
-            </button>
-          </div>
-
-          <div className="channel-fields">
-            <select
-              className="select"
+        <Card key={row.key}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Channel {i + 1}</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-destructive"
+                onClick={() => setRows((prev) => prev.filter((r) => r.key !== row.key))}
+              >
+                Remove
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <Select
               value={row.channel}
-              onChange={(e) => updateRow(row.key, { channel: e.target.value as AlertChannel })}
+              onValueChange={(v) => updateRow(row.key, { channel: v as AlertChannel })}
             >
-              {Object.entries(CHANNEL_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CHANNELS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <input
-              className="input"
-              placeholder={
-                row.channel === "email"
-                  ? "dev@example.com"
-                  : "https://hooks.slack.com/..."
-              }
+            <Input
+              placeholder={row.channel === "email" ? "dev@example.com" : "https://hooks.slack.com/..."}
               value={row.destination}
               onChange={(e) => updateRow(row.key, { destination: e.target.value })}
             />
 
-            <div className="flex items-center gap-4">
-              <label className="text-sm text-white/60">Threshold</label>
-              <input
-                className="input max-w-[80px]"
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Threshold</span>
+              <Input
                 type="number"
                 min={1}
                 max={100000}
                 value={row.threshold}
                 onChange={(e) => updateRow(row.key, { threshold: Number(e.target.value) || 10 })}
+                className="w-20"
               />
             </div>
 
-            <label className="toggle">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={row.enabled}
                 onChange={(e) => updateRow(row.key, { enabled: e.target.checked })}
+                className="rounded"
               />
-              <span className="toggle-track" />
-              <span className="text-sm text-white/60">
-                {row.enabled ? "Enabled" : "Disabled"}
-              </span>
+              <span className="text-muted-foreground">{row.enabled ? "Enabled" : "Disabled"}</span>
             </label>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
 
-      <div className="flex gap-2 mt-4">
-        <button
-          type="button"
-          className="btn"
-          onClick={addRow}
-          disabled={rows.length >= 3}
-        >
-          + Add Channel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "Saving..." : "Save Alerts"}
-        </button>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setRows((prev) => [...prev, emptyRow()])} disabled={rows.length >= 3}>
+          Add Channel
+        </Button>
+        <Button type="submit" size="sm" disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
       </div>
     </form>
   )

@@ -1,102 +1,91 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-@theme {
-  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "IBM Plex Mono", "Cascadia Code", "Fira Code", monospace;
-  --color-accent: #ff6f00;
-  --color-accent-soft: #ffb36b;
-  --color-surface: rgba(255, 255, 255, 0.04);
-  --color-surface-hover: rgba(255, 255, 255, 0.07);
-  --color-border: rgba(255, 255, 255, 0.10);
-  --color-border-visible: rgba(255, 255, 255, 0.16);
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+}
+
+:root {
+  --background: 0 0% 4%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 30 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 13%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 13%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 13%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 30 100% 50%;
+  --chart-1: 30 100% 50%;
+  --chart-2: 200 80% 60%;
+  --chart-3: 150 60% 50%;
+  --chart-4: 50 90% 55%;
+  --chart-5: 0 70% 60%;
+  --radius: 0.5rem;
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 30 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 0 0% 10%;
+  --sidebar-ring: 30 100% 50%;
 }
 
 body {
-  margin: 0;
-  min-height: 100vh;
-  color-scheme: dark;
-  background:
-    radial-gradient(circle at top, rgba(255, 111, 0, 0.22), transparent 40%),
-    linear-gradient(180deg, #111216 0%, #0a0b0d 100%);
+  background: #0a0b0d;
   color: #f5f7fa;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Reusable component classes */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f5f7fa;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-  &:hover { background: rgba(255, 255, 255, 0.07); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-}
-
-.btn-primary {
-  background: #ff6f00;
-  border-color: #ff6f00;
-  color: white;
-  font-weight: 600;
-  &:hover { background: #e86500; border-color: #e86500; }
-}
-
-.btn-danger {
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-  &:hover { background: rgba(239, 68, 68, 0.12); border-color: #ef4444; }
-}
-
-.btn-sm { padding: 0.25rem 0.625rem; font-size: 0.75rem; }
-
-/* Badges */
-.badge {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.badge-open { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-.badge-resolved { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
-.badge-ignored { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-
-/* Form inputs */
-.input {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.3);
-  color: #f5f7fa;
-  outline: none;
-  &:focus { border-color: #ff6f00; }
-}
-
-.select {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.3);
-  color: #f5f7fa;
-  outline: none;
-}
-
-/* Code / pre blocks */
+/* code block styling */
 pre.code-block {
-  font-family: var(--font-mono);
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.8125rem;
   line-height: 1.5;
   background: rgba(0, 0, 0, 0.4);
@@ -111,70 +100,11 @@ pre.code-block {
 
 /* DSN display */
 .dsn {
-  font-family: var(--font-mono);
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.8125rem;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   word-break: break-all;
-}
-
-/* Toggle switch */
-.toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-size: 0.8125rem;
-  & input { display: none; }
-}
-
-.toggle-track {
-  width: 2.25rem;
-  height: 1.25rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.16);
-  position: relative;
-  transition: background 0.15s;
-  &::after {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    background: white;
-    transition: transform 0.15s;
-  }
-}
-
-.toggle input:checked + .toggle-track {
-  background: #ff6f00;
-  &::after { transform: translateX(1rem); }
-}
-
-/* Card */
-.card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
-  padding: 1.5rem;
-}
-
-/* Toast */
-.toast { padding: 0.625rem 1rem; border-radius: 0.5rem; font-size: 0.8125rem; }
-.toast-error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-.toast-success { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
-
-/* Navigation */
-.nav-bar {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(10, 11, 13, 0.8);
-  backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }

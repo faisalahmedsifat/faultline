@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { createProject } from "@/lib/api"
 
 export function CreateProjectForm() {
@@ -29,20 +31,18 @@ export function CreateProjectForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="flex gap-2 items-end">
-        <input
-          className="input flex-1"
-          placeholder="My SaaS App"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={120}
-          required
-        />
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? "Creating..." : "Create Project"}
-        </button>
-      </div>
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <Input
+        placeholder="My SaaS App"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={120}
+        required
+        className="flex-1"
+      />
+      <Button type="submit" disabled={loading}>
+        {loading ? "Creating..." : "Create"}
+      </Button>
     </form>
   )
 }

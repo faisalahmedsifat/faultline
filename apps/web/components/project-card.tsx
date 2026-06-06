@@ -4,14 +4,15 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { deleteProject, rotateDsn, type ProjectDto } from "@/lib/api"
-import { ConfirmModal } from "@/components/confirm-modal"
 
 export function ProjectCard({ project }: { project: ProjectDto }) {
   const [dsn, setDsn] = useState(project.dsn)
   const [dsnKey, setDsnKey] = useState(project.dsnKey)
   const [rotating, setRotating] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const router = useRouter()
@@ -30,11 +31,9 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
     }
   }
 
-  async function handleCopy() {
-    await navigator.clipboard.writeText(dsn)
-    setCopied(true)
-    toast.success("DSN copied to clipboard")
-    setTimeout(() => setCopied(false), 2000)
+  async function handleCopy(text: string, label: string) {
+    await navigator.clipboard.writeText(text)
+    toast.success(`${label} copied`)
   }
 
   async function handleDelete() {
@@ -50,89 +49,93 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
     }
   }
 
+  const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
+  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/1`
+
   const created = new Date(project.createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric"
   })
 
-  const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
-  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/1`
-  const faultlineSnippet = `import { Faultline } from "@xyph3r/faultline"
-
-Faultline.init({
-  dsn: "${dsnKey}",
-  baseUrl: "${ingestBase}"
-})`
-  const sentrySnippet = `import * as Sentry from "@sentry/node"
-Sentry.init({ dsn: "${sentryDsn}" })`
-
   return (
-    <div className="card">
-      <ConfirmModal
-        open={confirmOpen}
-        title={`Delete "${project.name}"?`}
-        message="All errors and alert configs for this project will be permanently deleted. This cannot be undone."
-        confirmLabel="Delete"
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmOpen(false)}
-      />
+    <>
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete &quot;{project.name}&quot;?</DialogTitle>
+            <DialogDescription>
+              All errors and alert configs for this project will be permanently deleted.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <h3 className="text-lg font-semibold">
-            <Link href={`/projects/${project.id}`} className="hover:text-[#ffb36b] transition-colors">
-              {project.name}
-            </Link>
-          </h3>
-          <p className="text-sm text-white/60 mt-0.5">Created {created}</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-sm" onClick={handleRotate} disabled={rotating}>
-            {rotating ? "Rotating..." : "Rotate DSN"}
-          </button>
-          <button className="btn btn-sm btn-danger" onClick={() => setConfirmOpen(true)} disabled={deleting}>
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </div>
-
-      {/* Faultline-native DSN */}
-      <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Faultline SDK</p>
-      <div className="dsn flex items-center justify-between gap-2 mb-3">
-        <code className="text-sm text-[#ffb36b] break-all">{dsn}</code>
-        <button className="btn btn-sm" onClick={handleCopy}>
-          {copied ? "Copied!" : "Copy"}
-        </button>
-      </div>
-
-      {/* Sentry-compatible DSN */}
-      <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Sentry SDK (any language)</p>
-      <div className="dsn flex items-center justify-between gap-2 mb-4">
-        <code className="text-sm text-[#ffb36b] break-all">{sentryDsn}</code>
-        <button className="btn btn-sm" onClick={() => {
-          navigator.clipboard.writeText(sentryDsn)
-          toast.success("Sentry DSN copied")
-        }}>
-          Copy
-        </button>
-      </div>
-
-      <details className="group">
-        <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60 transition-colors select-none">
-          Setup examples
-        </summary>
-        <div className="mt-2 space-y-3">
-          <div>
-            <p className="text-xs text-white/30 mb-1">Faultline SDK</p>
-            <pre className="code-block text-xs">{faultlineSnippet}</pre>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg">
+                <Link href={`/projects/${project.id}`} className="hover:text-primary transition-colors">
+                  {project.name}
+                </Link>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Created {created}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleRotate} disabled={rotating}>
+                {rotating ? "Rotating..." : "Rotate DSN"}
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setConfirmOpen(true)} disabled={deleting}>
+                Delete
+              </Button>
+            </div>
           </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          {/* Faultline DSN */}
           <div>
-            <p className="text-xs text-white/30 mb-1">Sentry SDK (Node, Python, Go, etc.)</p>
-            <pre className="code-block text-xs">{sentrySnippet}</pre>
+            <p className="text-xs text-muted-foreground mb-1">Faultline SDK</p>
+            <div className="dsn flex items-center justify-between gap-2">
+              <code className="text-xs text-primary break-all">{dsn}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-7 text-xs"
+                onClick={() => handleCopy(dsn, "DSN")}
+              >
+                Copy
+              </Button>
+            </div>
           </div>
-        </div>
-      </details>
-    </div>
+
+          {/* Sentry DSN */}
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Sentry SDK (any language)</p>
+            <div className="dsn flex items-center justify-between gap-2">
+              <code className="text-xs text-primary break-all">{sentryDsn}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-7 text-xs"
+                onClick={() => handleCopy(sentryDsn, "Sentry DSN")}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   )
 }

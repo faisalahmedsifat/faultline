@@ -20,21 +20,22 @@ export default async function AlertSettingsPage({
   }
 
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="max-w-xl mx-auto px-4 sm:px-6 pt-6 pb-12">
       <Link
         href={`/projects/${params.projectId}`}
-        className="text-sm text-white/50 hover:text-white/80 transition-colors"
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         &larr; Back to Inbox
       </Link>
+      <h1 className="text-2xl font-bold tracking-tight mt-1 mb-6">Alert Settings</h1>
 
-      <h1 className="text-2xl font-bold mt-1 mb-6">Alert Settings</h1>
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-3 mb-4">
+          {error}
+        </div>
+      )}
 
-      {error && <div className="toast toast-error mb-4">{error}</div>}
-
-      <div className="card">
-        <AlertConfigForm projectId={params.projectId} existing={alerts} />
-      </div>
+      <AlertConfigForm projectId={params.projectId} existing={alerts} />
     </div>
   )
 }

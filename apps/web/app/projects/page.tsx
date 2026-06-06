@@ -1,6 +1,7 @@
 import { getProjects } from "@/lib/api"
 import { CreateProjectForm } from "@/components/create-project-form"
 import { ProjectCard } from "@/components/project-card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export const dynamic = "force-dynamic"
 
@@ -16,27 +17,31 @@ export default async function ProjectsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Projects</h1>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-12">
+      <h1 className="text-2xl font-bold tracking-tight mb-6">Projects</h1>
 
-      <div className="card mb-6">
-        <h2 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-3">
-          Create New Project
-        </h2>
-        <CreateProjectForm />
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Create New Project
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CreateProjectForm />
+        </CardContent>
+      </Card>
 
-      {error && <div className="toast toast-error mb-4">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-3 mb-4">
+          {error}
+        </div>
+      )}
 
       {projects.length === 0 && !error ? (
-        <div className="text-center py-12">
-          <div className="text-5xl mb-4">📥</div>
-          <h3 className="text-lg font-medium text-white/80 mb-2">
-            Your error inbox starts here
-          </h3>
-          <p className="text-sm text-white/50 max-w-md mx-auto">
-            Create a project above to get a DSN. Then install the SDK in your app and
-            every production error will show up right here.
+        <div className="text-center py-16">
+          <p className="text-lg font-medium mb-2">No projects yet</p>
+          <p className="text-sm text-muted-foreground">
+            Create your first project above to get started.
           </p>
         </div>
       ) : (
