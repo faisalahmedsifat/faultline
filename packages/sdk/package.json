@@ -1,7 +1,21 @@
 {
   "name": "faultline",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted error tracking SDK. Zero dependencies, works everywhere.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/faisalahmedsifat/faultline.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "error-tracking",
+    "error-monitoring",
+    "self-hosted",
+    "sentry-alternative",
+    "typescript"
+  ],
+  "author": "Faisal Ahmed Sifat",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,19 +24,19 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./middleware": {
-      "types": "./dist/middleware.d.ts",
-      "default": "./dist/middleware.js"
-    },
     "./types": {
       "types": "./dist/types.d.ts",
       "default": "./dist/types.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "bun run build",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }
