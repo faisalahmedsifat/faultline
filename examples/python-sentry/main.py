@@ -8,8 +8,9 @@ Run:     python main.py
 import sentry_sdk
 
 # Point Sentry SDK at faultline
+# Replace prj_xxxxxxxxxxxx with your project from the dashboard
 sentry_sdk.init(
-    dsn="https://LV0l2yhx7QtWCkoumWCw660e@localhost:4000/1",
+    dsn="https://LV0l2yhx7QtWCkoumWCw660e@localhost:4000/prj_xxxxxxxxxxxx",
     environment="production",
 )
 

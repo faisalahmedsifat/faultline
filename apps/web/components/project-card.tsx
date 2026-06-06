@@ -50,7 +50,7 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
   }
 
   const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
-  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/1`
+  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/${project.id}`
 
   const created = new Date(project.createdAt).toLocaleDateString("en-US", {
     year: "numeric",

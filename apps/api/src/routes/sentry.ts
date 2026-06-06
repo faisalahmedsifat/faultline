@@ -162,7 +162,7 @@ export const sentryRouter = new Hono()
 sentryRouter.post("/api/:projectId/store", async (c) => {
   // Sentry DSN format: https://{dsn_key}@{host}/{project_id}
   // The dsn_key is sent as sentry_key in the X-Sentry-Auth header
-  // The project_id in the URL is ignored (Sentry requires an integer, we use any)
+  const urlProjectId = c.req.param("projectId")
   const authHeader = c.req.header("x-sentry-auth") ?? ""
   const keyMatch = authHeader.match(/sentry_key=([^,]+)/)
   const dsnKey = keyMatch ? keyMatch[1] : null
@@ -213,6 +213,15 @@ sentryRouter.post("/api/:projectId/store", async (c) => {
       code: "project_not_found",
       message: "Project not found",
       statusCode: 404
+    })
+  }
+
+  // Validate the project ID in the URL matches the project bound to this DSN key
+  if (project.id !== urlProjectId) {
+    throw new AppError({
+      code: "project_id_mismatch",
+      message: "Project ID in DSN path does not match the DSN key",
+      statusCode: 400
     })
   }
 

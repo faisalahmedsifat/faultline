@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/node"
 
 // Standard Sentry SDK pointing at faultline
+// Replace prj_xxxxxxxxxxxx with your project from the dashboard
 Sentry.init({
-  dsn: "https://LV0l2yhx7QtWCkoumWCw660e@localhost:4000/1",
+  dsn: "https://LV0l2yhx7QtWCkoumWCw660e@localhost:4000/prj_xxxxxxxxxxxx",
   environment: "production"
 })
 
