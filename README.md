@@ -45,7 +45,16 @@ export const POST = Faultline.withCapture(async (req: Request) => {
 
 The SDK is zero-dependency, under 3KB, and works in Node, Bun, Deno, and Edge runtimes.
 
-Works from any language — it's just HTTP:
+**Use any Sentry SDK** — faultline accepts Sentry's ingest format. Just change the DSN:
+
+```python
+import sentry_sdk
+sentry_sdk.init(dsn="https://x@faultline.example.com/{dsn_key}")
+```
+
+Works with Python, Go, Ruby, PHP, Java, .NET — [all Sentry SDKs](https://docs.sentry.io/platforms/).
+
+**Works from any language** — it's just HTTP:
 
 ```python
 import requests

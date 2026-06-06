@@ -11,6 +11,7 @@ import { healthRouter } from "./routes/health"
 import { ingestRouter } from "./routes/ingest"
 import { projectsRouter } from "./routes/projects"
 import { rootRouter } from "./routes/root"
+import { sentryRouter } from "./routes/sentry"
 
 export function createApp() {
   const app = new Hono()
@@ -21,6 +22,7 @@ export function createApp() {
   app.route("/", rootRouter)
   app.route("/", healthRouter)
   app.route("/", ingestRouter)
+  app.route("/", sentryRouter)
   app.route("/", projectsRouter)
   app.route("/", alertsRouter)
   app.route("/", errorsRouter)

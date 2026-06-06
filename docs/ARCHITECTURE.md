@@ -239,3 +239,37 @@ docker compose up -d
 ```
 
 A reverse proxy (Caddy, Nginx, Cloudflare Tunnel) is recommended in production. See `infra/Caddyfile.example` for a Caddy config that routes `/ingest/*` and `/api/*` to the API service and everything else to the web dashboard.
+
+---
+
+## Sentry SDK Compatibility
+
+faultline accepts events from any Sentry SDK. Configure your Sentry SDK with a faultline DSN:
+
+```
+https://{anything}@{host}/{dsn_key}
+```
+
+Examples:
+
+```python
+# Python
+import sentry_sdk
+sentry_sdk.init(dsn="https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e")
+```
+
+```ts
+// Node.js
+import * as Sentry from "@sentry/node"
+Sentry.init({ dsn: "https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e" })
+```
+
+```go
+// Go
+import "github.com/getsentry/sentry-go"
+sentry.Init(sentry.ClientOptions{
+    Dsn: "https://x@faultline.example.com/LV0l2yhx7QtWCkoumWCw660e",
+})
+```
+
+The endpoint `POST /api/{dsn_key}/store/` accepts Sentry's envelope format and maps it to faultline's internal model. This gives faultline access to Sentry's entire SDK ecosystem — Python, Go, Ruby, PHP, Java, .NET, iOS, Android, and more — with zero additional maintenance burden.

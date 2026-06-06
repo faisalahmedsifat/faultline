@@ -1,0 +1,339 @@
+import { Hono } from "hono"
+
+import { db } from "../db/client"
+import { errors, projects } from "../db/schema"
+import { AppError } from "../lib/errors"
+import { fingerprint } from "../lib/fingerprint"
+import { createId } from "../lib/id"
+import { jsonOk } from "../lib/http"
+import { logger } from "../lib/logger"
+import {
+  DAILY_COUNT_TTL_SECONDS,
+  RATE_COUNT_TTL_SECONDS,
+  dailyCountKey,
+  rateCountKey
+} from "../lib/ingest"
+import { enqueueAlertDelivery } from "../lib/queue"
+import { redisConnection } from "../lib/redis"
+import { sql, eq, and } from "drizzle-orm"
+import { alerts } from "../db/schema"
+
+// ── Sentry-compatible ingest ──
+// Accepts POST /api/{dsn_key}/store/ from any Sentry SDK
+// The dsn_key maps to faultline's dsn_key on the projects table
+// Sentry DSN format: https://{anything}@{host}/{dsn_key}
+
+type SentryEvent = {
+  event_id?: string
+  level?: string
+  environment?: string
+  transaction?: string
+  request?: { url?: string; method?: string }
+  user?: { id?: string; email?: string; username?: string }
+  exception?: {
+    values?: Array<{
+      type?: string
+      value?: string
+      stacktrace?: {
+        frames?: Array<{
+          filename?: string
+          function?: string
+          lineno?: number
+          colno?: number
+          abs_path?: string
+          context_line?: string
+        }>
+      }
+    }>
+  }
+  tags?: Record<string, string>
+  extra?: Record<string, unknown>
+  breadcrumbs?: unknown[]
+  modules?: Record<string, string>
+}
+
+function parseEnvelope(body: string): SentryEvent | null {
+  const lines = body.split("\n").filter((l) => l.trim())
+
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      const parsed = JSON.parse(lines[i])
+      // The envelope header and item header are metadata
+      // The actual event JSON has exception, event_id, etc.
+      if (parsed.exception || parsed.event_id || parsed.message || parsed.logentry) {
+        return parsed as SentryEvent
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+type SentryFrame = {
+  filename?: string
+  function?: string
+  lineno?: number
+  colno?: number
+  abs_path?: string
+  context_line?: string
+}
+
+function buildStackTrace(frames?: SentryFrame[]): string {
+  if (!frames || frames.length === 0) return ""
+
+  return frames
+    .map((f: SentryFrame) => {
+      const file = f.abs_path ?? f.filename ?? "<unknown>"
+      const fn = f.function ?? "<anonymous>"
+      const line = f.lineno ?? "?"
+      const col = f.colno ?? ""
+      const context = f.context_line ? `\n    ${f.context_line.trim()}` : ""
+      return `  at ${fn} (${file}:${line}:${col})${context}`
+    })
+    .join("\n")
+}
+
+function mapSentryToIngest(event: SentryEvent): {
+  title: string
+  message?: string
+  stack?: string
+  route?: string
+  file?: string
+  line?: number
+  col?: number
+  env?: string
+  level: string
+  userId?: string
+  metadata?: Record<string, unknown>
+} {
+  const exc = event.exception?.values?.[0]
+  const topFrame = exc?.stacktrace?.frames?.[0]
+
+  return {
+    title: exc?.type ?? event.event_id ?? "Error",
+    message: exc?.value,
+    stack: exc?.stacktrace?.frames
+      ? buildStackTrace(exc.stacktrace.frames)
+      : undefined,
+    route: event.request?.url
+      ? new URL(event.request.url, "http://localhost").pathname
+      : event.transaction,
+    file: topFrame?.filename ?? topFrame?.abs_path,
+    line: topFrame?.lineno,
+    col: topFrame?.colno,
+    env: event.environment,
+    level: mapLevel(event.level),
+    userId: event.user?.id ?? event.user?.email ?? event.user?.username,
+    metadata: {
+      ...event.tags,
+      ...event.extra,
+      sentry_event_id: event.event_id
+    }
+  }
+}
+
+function mapLevel(level?: string): "error" | "warning" | "info" {
+  switch (level) {
+    case "fatal":
+    case "error":
+      return "error"
+    case "warning":
+      return "warning"
+    case "info":
+    case "debug":
+      return "info"
+    default:
+      return "error"
+  }
+}
+
+type StoredError = {
+  id: string
+  title: string
+  count: number
+  env: string | null
+  route: string | null
+}
+
+export const sentryRouter = new Hono()
+
+sentryRouter.post("/api/:dsnKey/store", async (c) => {
+  const dsnKey = c.req.param("dsnKey")
+  if (!dsnKey) {
+    throw new AppError({
+      code: "invalid_dsn_key",
+      message: "DSN key is required",
+      statusCode: 400
+    })
+  }
+
+  // Sentry sends the body as raw text (envelope format)
+  const contentType = c.req.header("content-type") ?? ""
+  let body: string
+
+  try {
+    body = await c.req.text()
+  } catch {
+    throw new AppError({
+      code: "invalid_body",
+      message: "Request body is required",
+      statusCode: 400
+    })
+  }
+
+  // Parse envelope — extract the event JSON
+  const event = parseEnvelope(body)
+
+  if (!event) {
+    logger.warn("sentry.invalid_envelope", { dsnKey, body: body.slice(0, 500) })
+    throw new AppError({
+      code: "invalid_envelope",
+      message: "Could not parse Sentry envelope",
+      statusCode: 400
+    })
+  }
+
+  // Lookup project
+  const [project] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.dsnKey, dsnKey))
+    .limit(1)
+
+  if (!project) {
+    throw new AppError({
+      code: "project_not_found",
+      message: "Project not found",
+      statusCode: 404
+    })
+  }
+
+  // Map to faultline format and ingest
+  const payload = mapSentryToIngest(event)
+  const errorId = createId("err")
+  const digest = fingerprint(payload)
+  const now = new Date()
+
+  const [errorRecord] = await db
+    .insert(errors)
+    .values({
+      id: errorId,
+      projectId: project.id,
+      fingerprint: digest,
+      title: payload.title,
+      message: payload.message,
+      stack: payload.stack,
+      route: payload.route,
+      file: payload.file,
+      line: payload.line,
+      col: payload.col,
+      env: payload.env,
+      level: payload.level,
+      status: "open",
+      count: 1,
+      userCount: payload.userId ? 1 : 0,
+      firstSeen: now,
+      lastSeen: now,
+      metadata: payload.metadata ?? null,
+      users: payload.userId ? [payload.userId] : []
+    })
+    .onConflictDoUpdate({
+      target: [errors.projectId, errors.fingerprint],
+      set: {
+        count: sql`${errors.count} + 1`,
+        lastSeen: now,
+        message: payload.message ?? undefined,
+        stack: payload.stack ?? undefined,
+        route: payload.route ?? undefined,
+        file: payload.file ?? undefined,
+        line: payload.line ?? undefined,
+        col: payload.col ?? undefined,
+        env: payload.env ?? undefined,
+        level: payload.level ?? undefined,
+        metadata: payload.metadata ?? undefined,
+        users: payload.userId
+          ? sql`CASE
+              WHEN ${payload.userId} = ANY(${errors.users}) THEN ${errors.users}
+              ELSE array_append(${errors.users}, ${payload.userId})
+            END`
+          : undefined,
+        userCount: payload.userId
+          ? sql`CASE
+              WHEN ${payload.userId} = ANY(${errors.users}) THEN ${errors.userCount}
+              ELSE ${errors.userCount} + 1
+            END`
+          : undefined
+      }
+    })
+    .returning({
+      id: errors.id,
+      title: errors.title,
+      count: errors.count,
+      env: errors.env,
+      route: errors.route
+    })
+
+  await handleSentrySideEffects(project.id, errorRecord)
+
+  // Sentry expects 200, not 202
+  return jsonOk(c, { id: event.event_id ?? errorRecord.id }, 200)
+})
+
+async function handleSentrySideEffects(projectId: string, errorRecord: StoredError) {
+  try {
+    const dailyKey = dailyCountKey(projectId)
+    const dailyCount = await redisConnection.incr(dailyKey)
+    if (dailyCount === 1) {
+      await redisConnection.expire(dailyKey, DAILY_COUNT_TTL_SECONDS)
+    }
+
+    const rateKey = rateCountKey(projectId)
+    const rateCount = await redisConnection.incr(rateKey)
+    if (rateCount === 1) {
+      await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
+    }
+
+    const matchedAlerts = await db
+      .select({
+        id: alerts.id,
+        channel: alerts.channel,
+        destination: alerts.destination
+      })
+      .from(alerts)
+      .where(
+        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), eq(alerts.threshold, rateCount))
+      )
+
+    if (matchedAlerts.length === 0) return
+
+    try {
+      await enqueueAlertDelivery({
+        projectId,
+        alertTargets: matchedAlerts.map((a) => ({
+          id: a.id,
+          channel: a.channel as "slack" | "email" | "discord",
+          destination: a.destination
+        })),
+        errorId: errorRecord.id,
+        errorTitle: errorRecord.title,
+        count: errorRecord.count,
+        env: errorRecord.env,
+        route: errorRecord.route
+      })
+    } catch (error) {
+      logger.error("sentry.alert_enqueue_failed", {
+        projectId,
+        errorId: errorRecord.id,
+        message: error instanceof Error ? error.message : "Unknown"
+      })
+    }
+  } catch (error) {
+    logger.error("sentry.side_effects_failed", {
+      projectId,
+      errorId: errorRecord.id,
+      message: error instanceof Error ? error.message : "Unknown"
+    })
+  }
+}
