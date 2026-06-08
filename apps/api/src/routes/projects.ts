@@ -1,13 +1,15 @@
-import { desc, eq } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
 import { db } from "../db/client"
-import { alerts, projects } from "../db/schema"
+import { alerts, errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
 import { createId } from "../lib/id"
-import { buildDsnUrl } from "../lib/project"
+import { dailyCountKey } from "../lib/ingest"
+import { assertProjectExists, buildDsnUrl } from "../lib/project"
+import { redisConnection } from "../lib/redis"
 import { createToken } from "../lib/tokens"
 import { parseJsonBody } from "../middleware/parse-json"
 
@@ -124,6 +126,78 @@ projectsRouter.delete("/api/projects/:id", async (c) => {
   }
 
   return c.body(null, 204)
+})
+
+projectsRouter.get("/api/projects/:id/stats", async (c) => {
+  const params = projectParamsSchema.parse(c.req.param())
+
+  await assertProjectExists(params.id)
+
+  // Build Redis keys for the last 30 days
+  const now = new Date()
+  const dailyKeys: { key: string; date: string }[] = []
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(now)
+    date.setDate(date.getDate() - i)
+    dailyKeys.push({
+      key: dailyCountKey(params.id, date),
+      date: date.toISOString().slice(0, 10)
+    })
+  }
+
+  const redisValues = await redisConnection.mget(...dailyKeys.map((d) => d.key))
+
+  const dailyCounts = dailyKeys.map(({ date }, i) => ({
+    date,
+    count: redisValues[i] ? Number(redisValues[i]) : 0
+  }))
+
+  // Fetch Postgres aggregates and top errors in parallel
+  const [totalRow, openRow, resolvedRow, ignoredRow, topErrors] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(errors)
+      .where(eq(errors.projectId, params.id)),
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(errors)
+      .where(and(eq(errors.projectId, params.id), eq(errors.status, "open"))),
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(errors)
+      .where(and(eq(errors.projectId, params.id), eq(errors.status, "resolved"))),
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(errors)
+      .where(and(eq(errors.projectId, params.id), eq(errors.status, "ignored"))),
+    db
+      .select({
+        id: errors.id,
+        title: errors.title,
+        message: errors.message,
+        count: errors.count,
+        status: errors.status
+      })
+      .from(errors)
+      .where(eq(errors.projectId, params.id))
+      .orderBy(desc(errors.count))
+      .limit(5)
+  ])
+
+  return jsonOk(c, {
+    projectId: params.id,
+    dailyCounts,
+    totals: {
+      total: Number(totalRow.total),
+      open: Number(openRow.total),
+      resolved: Number(resolvedRow.total),
+      ignored: Number(ignoredRow.total)
+    },
+    topErrors: topErrors.map((e) => ({
+      ...e,
+      status: e.status as string
+    }))
+  })
 })
 
 function serializeProject(project: {
