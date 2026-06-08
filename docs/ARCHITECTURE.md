@@ -329,30 +329,30 @@ Production recommendations:
 faultline accepts events from any Sentry SDK. Configure your Sentry SDK with a faultline DSN:
 
 ```
-https://{dsn_key}@{host}/1
+https://{dsn_key}@{host}/{project_id}
 ```
 
-The `{dsn_key}` is your faultline project's DSN key. The `/1` is a dummy project ID (Sentry requires a numeric project ID — we use `1`). faultline extracts the DSN key from the `X-Sentry-Auth` header.
+The `{dsn_key}` is your faultline project's DSN key. The `{project_id}` is your faultline project ID (e.g., `prj_xxx...`). Get it from your project card in the dashboard. faultline extracts the project ID from the URL path and the DSN key from the `X-Sentry-Auth` header.
 
 Examples:
 
 ```python
 # Python
 import sentry_sdk
-sentry_sdk.init(dsn="https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1")
+sentry_sdk.init(dsn="https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def")
 ```
 
 ```ts
 // Node.js
 import * as Sentry from "@sentry/node"
-Sentry.init({ dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1" })
+Sentry.init({ dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def" })
 ```
 
 ```go
 // Go
 import "github.com/getsentry/sentry-go"
 sentry.Init(sentry.ClientOptions{
-    Dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1",
+    Dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def",
 })
 ```
 
