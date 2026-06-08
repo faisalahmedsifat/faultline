@@ -5,6 +5,7 @@ import { ErrorCard } from "@/components/error-card"
 import { ErrorSheet } from "@/components/error-sheet"
 import { ErrorFilters } from "@/components/error-filters"
 import { GettingStartedBanner } from "@/components/getting-started-banner"
+import { ErrorLiveFeed } from "@/components/error-live-feed"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Inbox, Settings, AlertCircle, CheckCircle2, BarChart3 } from "lucide-react"
 
@@ -82,7 +83,10 @@ export default async function ErrorInboxPage({
             <span className="text-muted-foreground/40">/</span>
             {projectName && <span className="text-foreground font-medium">{projectName}</span>}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Error Inbox</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">Error Inbox</h1>
+            <ErrorLiveFeed projectId={projectId} />
+          </div>
         </div>
         <Link
           href={`/projects/${projectId}/settings`}
