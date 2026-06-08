@@ -136,12 +136,19 @@ Only `title` is required. All other fields are optional.
 
 ## Features
 
-- **Drop-in Sentry replacement** — use any Sentry SDK by changing the DSN
+- **Drop-in Sentry replacement** — use any Sentry SDK by changing the DSN. Works with 20+ language SDKs.
 - **Error inbox** — fingerprint-based deduplication. Same error, same location? Merged, not duplicated.
+- **Real-time updates** — WebSocket push notifications when new errors arrive. Live error counter in the dashboard.
+- **Error trend charts** — 30-day volume charts on the project dashboard. See error spikes at a glance.
+- **Full-text search** — search errors by title and message. Combine with status and environment filters.
+- **Pagination** — page through large error sets with total count, page navigation.
+- **Stats API** — programmatic access to daily error counts, totals by status, and top errors.
 - **Multi-project** — one DSN per project. Track errors across all your services.
 - **Alerts** — Slack, Discord, and Email. Threshold-based, per project, per channel.
+- **Rate limiting** — built-in Redis-backed rate limiting on public ingest endpoints (100 req/15s).
+- **Source map support** — upload source maps via CLI. Resolve minified stacks back to original source.
 - **Self-hosted** — your data never leaves your infrastructure. GDPR-friendly by default.
-- **Zero-dep SDK** — safe to add to any project. No dependency conflicts.
+- **Zero-dep SDK** — safe to add to any project. No dependency conflicts. Under 3KB.
 
 ---
 
@@ -168,7 +175,67 @@ SDK / Sentry SDK → POST /ingest/:dsn or /api/{dsn}/store → api (Bun + Hono) 
                                                                          → worker (Bun) → Slack / Discord / Email
 
 dashboard (Next.js) → api (REST)
+                    ↔ api (WebSocket) — real-time error notifications
 ```
+
+| Service | Runtime | Purpose |
+|---------|---------|---------|
+| `api` | Bun + Hono 4 | Ingest errors, serve dashboard APIs, enqueue alerts, WebSocket server |
+| `web` | Next.js 16 | Dashboard UI (no API routes, no DB access) |
+| `worker` | Bun + BullMQ | Consume `alert.deliver` queue, send Slack/Discord/Email notifications |
+| `sdk` | TypeScript | Zero-dep client library (`@xyph3r/faultline` npm package) |
+
+---
+
+## Production Deployment
+
+### Docker Compose (single server)
+
+```bash
+git clone https://github.com/faisalahmedsifat/faultline.git
+cd faultline
+
+# Optional: configure alert channels
+cp .env.example .env
+# Edit .env with your Slack/Discord/Resend credentials
+
+docker compose up -d
+```
+
+This starts five containers: `web` (dashboard on :3000), `api` (ingest + API on :4000), `worker` (alert delivery), `db` (Postgres 16), `redis` (Redis 7). Data is persisted in Docker volumes.
+
+### With a Reverse Proxy
+
+For production, place a reverse proxy in front. See `infra/Caddyfile.example`:
+
+```
+faultline.yourdomain.com {
+    reverse_proxy /ingest/* api:4000
+    reverse_proxy /api/*    api:4000
+    reverse_proxy /*        web:3000
+}
+```
+
+Works with Caddy, Nginx, Traefik, or any reverse proxy. Route `/ingest/*` and `/api/*` to the API service, everything else to the dashboard.
+
+### Environment Variables
+
+| Variable | Service | Required | Purpose |
+|----------|---------|----------|---------|
+| `DATABASE_URL` | api | Yes | Postgres connection string |
+| `REDIS_URL` | api, worker | Yes | Redis connection string |
+| `API_URL` | web | Yes | API endpoint for the dashboard |
+| `AUTH_TOKEN` | api, web | No | Shared bearer token for dashboard ↔ API auth |
+| `CORS_ORIGIN` | api | No | CORS origin (default: `*`) |
+| `APP_BASE_URL` | api, worker | No | Base URL for link generation |
+| `SLACK_WEBHOOK_URL` | worker | No | Slack webhook for alerts |
+| `DISCORD_WEBHOOK_URL` | worker | No | Discord webhook for alerts |
+| `RESEND_API_KEY` | worker | No | Resend API key for email alerts |
+| `RESEND_FROM` | worker | No | From address for email alerts |
+
+### Using External Databases
+
+Point `DATABASE_URL` and `REDIS_URL` to managed services (Supabase, Neon, Upstash, etc.) for zero-ops deployments. The API auto-runs migrations on startup.
 
 ---
 
@@ -190,6 +257,48 @@ bun run dev
 | API | `http://localhost:4000` |
 
 See [examples/](examples/) for runnable demo projects.
+
+---
+
+## Contributing
+
+faultline is MIT-licensed open source. Contributions are welcome.
+
+### Project Structure
+
+```
+apps/
+  api/        Bun + Hono — ingest API, dashboard API, WebSocket server
+  web/        Next.js 16 — dashboard UI (Tailwind CSS, shadcn/ui)
+  worker/     Bun + BullMQ — background alert delivery
+packages/
+  sdk/        TypeScript — zero-dep client library (@xyph3r/faultline)
+docs/         Architecture docs and API reference
+examples/     Runnable demo projects (Node, Python)
+infra/        Reverse proxy configs
+```
+
+### Workflow
+
+1. Start infrastructure: `docker compose up -d db redis`
+2. Run migrations: `bun run --cwd apps/api db:migrate`
+3. Start all services: `bun run dev`
+4. Run tests: `bun run test`
+5. Typecheck: `bun run typecheck`
+
+### Before Submitting a PR
+
+- `bun run typecheck` must pass for all services
+- `bun run test` must pass — add tests for new functionality
+- Keep the SDK zero-dependency — never add npm dependencies to `packages/sdk`
+
+### Code Conventions
+
+- TypeScript throughout, strict mode
+- Follow existing patterns — look at similar routes/components for reference
+- No new dependencies without strong justification
+
+Issues and PRs are tracked on [GitHub](https://github.com/faisalahmedsifat/faultline).
 
 ---
 
