@@ -1,17 +1,12 @@
-import { and, eq, lte, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
 import { db } from "../db/client"
-import { alerts, errors, projects } from "../db/schema"
+import { errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { fingerprint } from "../lib/fingerprint"
-import {
-  DAILY_COUNT_TTL_SECONDS,
-  RATE_COUNT_TTL_SECONDS,
-  dailyCountKey,
-  rateCountKey
-} from "../lib/ingest"
+import { handleAlertSideEffects } from "../lib/ingest"
 import { createId } from "../lib/id"
 import { jsonOk } from "../lib/http"
 import { logger } from "../lib/logger"
@@ -39,14 +34,6 @@ const ingestPayloadSchema = z.object({
 })
 
 type IngestPayload = z.infer<typeof ingestPayloadSchema>
-
-type StoredError = {
-  id: string
-  title: string
-  count: number
-  env: string | null
-  route: string | null
-}
 
 export const ingestRouter = new Hono()
 
@@ -166,7 +153,7 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
       route: errors.route
     })
 
-  await handleIngestSideEffects(project.id, errorRecord)
+  await handleAlertSideEffects(project.id, errorRecord, "ingest")
 
   return jsonOk(c, { accepted: true, errorId: errorRecord.id }, 202)
 })

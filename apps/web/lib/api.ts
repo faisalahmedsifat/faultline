@@ -60,6 +60,7 @@ export type AlertInput = {
 type ErrorFilters = {
   status?: ErrorStatus
   env?: string
+  search?: string
 }
 
 // ---- Internal ----
@@ -128,6 +129,7 @@ export async function getErrors(
   const params = new URLSearchParams({ projectId })
   if (filters?.status) params.set("status", filters.status)
   if (filters?.env) params.set("env", filters.env)
+  if (filters?.search) params.set("search", filters.search)
   if (filters?.page) params.set("page", String(filters.page))
   if (filters?.pageSize) params.set("pageSize", String(filters.pageSize))
 
@@ -146,6 +148,35 @@ export async function updateErrorStatus(
     method: "PATCH",
     body: JSON.stringify({ status })
   })
+}
+
+// ---- Stats ----
+
+export type DailyCountDto = {
+  date: string
+  count: number
+}
+
+export type StatsDto = {
+  projectId: string
+  dailyCounts: DailyCountDto[]
+  totals: {
+    total: number
+    open: number
+    resolved: number
+    ignored: number
+  }
+  topErrors: {
+    id: string
+    title: string
+    message: string | null
+    count: number
+    status: string
+  }[]
+}
+
+export async function getProjectStats(projectId: string): Promise<StatsDto> {
+  return request(`/api/projects/${projectId}/stats`)
 }
 
 // ---- Alerts ----

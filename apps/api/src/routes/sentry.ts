@@ -1,9 +1,11 @@
 import { Hono } from "hono"
+import { sql, eq } from "drizzle-orm"
 
 import { db } from "../db/client"
 import { errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { fingerprint } from "../lib/fingerprint"
+import { handleAlertSideEffects } from "../lib/ingest"
 import { createId } from "../lib/id"
 import { jsonOk } from "../lib/http"
 import { logger } from "../lib/logger"
@@ -152,14 +154,6 @@ function mapLevel(level?: string): "error" | "warning" | "info" {
   }
 }
 
-type StoredError = {
-  id: string
-  title: string
-  count: number
-  env: string | null
-  route: string | null
-}
-
 export const sentryRouter = new Hono()
 
 sentryRouter.post("/api/:projectId/store", async (c) => {
@@ -295,7 +289,7 @@ sentryRouter.post("/api/:projectId/store", async (c) => {
       route: errors.route
     })
 
-  await handleSentrySideEffects(project.id, errorRecord)
+  await handleAlertSideEffects(project.id, errorRecord, "sentry")
 
   // Sentry expects 200, not 202
   return jsonOk(c, { id: event.event_id ?? errorRecord.id }, 200)
