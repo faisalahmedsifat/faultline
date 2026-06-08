@@ -1,5 +1,0 @@
-{
-  "status": "completed",
-  "summary": "Fixed two critical bugs:\n\n1. Added GET /api/projects/:id endpoint (apps/api/src/routes/projects.ts:104-129) — parses ID param, fetches project from DB, returns 404 for invalid IDs, returns serialized project with DSN URL for valid ones. Matches web client's getProject() return type exactly.\n\n2. Fixed alert threshold comparison in both ingest.ts:197 and sentry.ts:325 — changed from eq(alerts.threshold, rateCount) to lte(alerts.threshold, rateCount). This ensures alerts fire when the error rate counter is >= the threshold, not just when it's exactly equal. Added lte to drizzle-orm imports in both files. Prevents silent alert failures when rate counter jumps past the threshold due to concurrent requests.",
-  "messages": []
-}
