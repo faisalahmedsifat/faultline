@@ -1,10 +1,9 @@
-import { serve } from "@hono/node-server"
-
 import { pingDb, runMigrations } from "./db/client"
 import { createApp } from "./server"
 import { env } from "./lib/env"
 import { logger } from "./lib/logger"
 import { connectRedis } from "./lib/redis"
+import { addConnection, removeConnection, type WSData } from "./lib/ws"
 
 async function start() {
   await runMigrations()
@@ -13,19 +12,40 @@ async function start() {
 
   const app = createApp()
 
-  serve(
-    {
-      fetch: app.fetch,
-      port: env.PORT
+  Bun.serve({
+    port: env.PORT,
+    fetch(req, server) {
+      const url = new URL(req.url)
+      const wsMatch = url.pathname.match(/^\/ws\/([^/]+)$/)
+
+      if (wsMatch) {
+        const projectId = wsMatch[1]
+        const upgraded = server.upgrade(req, {
+          data: { projectId } satisfies WSData
+        })
+        if (upgraded) return
+      }
+
+      return app.fetch(req)
     },
-    (info) => {
-      logger.info("api.started", {
-        host: info.address,
-        port: info.port,
-        nodeEnv: env.NODE_ENV
-      })
+    websocket: {
+      open(ws) {
+        addConnection(ws)
+      },
+      close(ws) {
+        removeConnection(ws)
+      },
+      message(ws, _msg) {
+        // Inbound messages not needed for this notification pattern
+      }
     }
-  )
+  })
+
+  logger.info("api.started", {
+    host: "0.0.0.0",
+    port: env.PORT,
+    nodeEnv: env.NODE_ENV
+  })
 }
 
 start().catch((error) => {

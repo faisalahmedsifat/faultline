@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
@@ -17,7 +17,8 @@ const listErrorsQuerySchema = z.object({
   status: errorStatusSchema.optional(),
   env: z.string().min(1).optional(),
   page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().min(1).optional()
 })
 
 const errorParamsSchema = z.object({
@@ -81,6 +82,13 @@ errorsRouter.get("/api/errors", async (c) => {
     filters.push(eq(errors.env, query.data.env))
   }
 
+  if (query.data.search) {
+    const pattern = `%${query.data.search}%`
+    filters.push(
+      or(ilike(errors.title, pattern), ilike(errors.message, pattern))
+    )
+  }
+
   const where = and(...filters)
   const { page, pageSize } = query.data
 
@@ -118,7 +126,8 @@ errorsRouter.get("/api/errors", async (c) => {
     projectId: query.data.projectId,
     filters: {
       status: query.data.status ?? null,
-      env: query.data.env ?? null
+      env: query.data.env ?? null,
+      search: query.data.search ?? null
     },
     pagination: { page, pageSize, total, totalPages },
     errors: rows.map((row) => ({

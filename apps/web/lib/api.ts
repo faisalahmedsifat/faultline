@@ -150,6 +150,35 @@ export async function updateErrorStatus(
   })
 }
 
+// ---- Stats ----
+
+export type DailyCountDto = {
+  date: string
+  count: number
+}
+
+export type StatsDto = {
+  projectId: string
+  dailyCounts: DailyCountDto[]
+  totals: {
+    total: number
+    open: number
+    resolved: number
+    ignored: number
+  }
+  topErrors: {
+    id: string
+    title: string
+    message: string | null
+    count: number
+    status: string
+  }[]
+}
+
+export async function getProjectStats(projectId: string): Promise<StatsDto> {
+  return request(`/api/projects/${projectId}/stats`)
+}
+
 // ---- Alerts ----
 
 export async function getAlerts(

@@ -5,6 +5,7 @@ import { logger } from "./lib/logger"
 import { jsonError } from "./lib/http"
 import { authMiddleware } from "./middleware/auth"
 import { corsMiddleware } from "./middleware/cors"
+import { rateLimitMiddleware } from "./middleware/rate-limit"
 import { alertsRouter } from "./routes/alerts"
 import { errorsRouter } from "./routes/errors"
 import { requestLogger } from "./middleware/request-logger"
@@ -23,6 +24,20 @@ export function createApp() {
 
   app.route("/", rootRouter)
   app.route("/", healthRouter)
+  // ── Rate limiting for public ingest endpoints ──
+  app.use(
+    "/ingest/*",
+    rateLimitMiddleware((c) => c.req.param("dsnKey"))
+  )
+  app.use(
+    "/api/*/store",
+    rateLimitMiddleware((c) => {
+      const authHeader = c.req.header("x-sentry-auth") ?? ""
+      const keyMatch = authHeader.match(/sentry_key=([^,]+)/)
+      return keyMatch ? keyMatch[1] : "unknown"
+    })
+  )
+
   // ── Public routes (no auth) ──
   app.route("/", ingestRouter)     // DSN-based auth
   app.route("/", sentryRouter)     // DSN-based auth
