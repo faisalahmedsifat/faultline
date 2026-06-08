@@ -10,6 +10,12 @@ export function buildDsnUrl(dsnKey: string) {
   return new URL(`/ingest/${dsnKey}`, base).toString()
 }
 
+export function buildSentryDsnUrl(dsnKey: string, projectId: string) {
+  const base = env.INGEST_BASE_URL ?? env.APP_BASE_URL
+  const host = new URL(base).host
+  return `https://${dsnKey}@${host}/${projectId}`
+}
+
 export async function assertProjectExists(projectId: string) {
   const [project] = await db
     .select({ id: projects.id })

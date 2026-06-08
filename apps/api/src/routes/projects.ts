@@ -8,7 +8,7 @@ import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
 import { createId } from "../lib/id"
 import { dailyCountKey } from "../lib/ingest"
-import { assertProjectExists, buildDsnUrl } from "../lib/project"
+import { assertProjectExists, buildDsnUrl, buildSentryDsnUrl } from "../lib/project"
 import { redisConnection } from "../lib/redis"
 import { createToken } from "../lib/tokens"
 import { parseJsonBody } from "../middleware/parse-json"
@@ -26,6 +26,7 @@ type ProjectDto = {
   name: string
   dsnKey: string
   dsn: string
+  sentryDsn: string
   createdAt: string
 }
 
@@ -238,6 +239,7 @@ function serializeProject(project: {
     name: project.name,
     dsnKey: project.dsnKey,
     dsn: buildDsnUrl(project.dsnKey),
+    sentryDsn: buildSentryDsnUrl(project.dsnKey, project.id),
     createdAt: project.createdAt.toISOString()
   }
 }
