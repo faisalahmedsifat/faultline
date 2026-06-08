@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, lte, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
@@ -194,7 +194,7 @@ async function handleIngestSideEffects(projectId: string, errorRecord: StoredErr
       })
       .from(alerts)
       .where(
-        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), eq(alerts.threshold, rateCount))
+        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), lte(alerts.threshold, rateCount))
       )
 
     if (matchedAlerts.length === 0) {
