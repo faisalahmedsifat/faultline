@@ -27,10 +27,11 @@ export default async function ErrorInboxPage({
 
   const status = sp.status as "open" | "ignored" | "resolved" | undefined
   const env = sp.env
+  const search = sp.search
   const page = Number(sp.page) || 1
 
   try {
-    data = await getErrors(projectId, { status, env, page, pageSize: 20 })
+    data = await getErrors(projectId, { status, env, search, page, pageSize: 20 })
   } catch (err) {
     error = err instanceof Error ? err.message : "Failed to load errors"
   }

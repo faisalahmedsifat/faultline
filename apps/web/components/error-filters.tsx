@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,13 @@ export function ErrorFilters({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "")
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("search") ?? "")
+  }, [searchParams])
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams)
@@ -34,6 +42,21 @@ export function ErrorFilters({
     }
     if (key !== "page") params.delete("page")
     router.push(`${pathname}?${params}`)
+  }
+
+  function debouncedSetSearch(value: string) {
+    setSearchInput(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams)
+      if (value) {
+        params.set("search", value)
+      } else {
+        params.delete("search")
+      }
+      params.delete("page")
+      router.push(`${pathname}?${params}`)
+    }, 300)
   }
 
   function goToPage(p: number) {
@@ -85,8 +108,8 @@ export function ErrorFilters({
           <Input
             className="pl-8 h-10 border-0 bg-transparent text-xs shadow-none rounded-none focus:ring-0"
             placeholder="Search errors..."
-            value={searchParams.get("search") ?? ""}
-            onChange={(e) => setParam("search", e.target.value)}
+            value={searchInput}
+            onChange={(e) => debouncedSetSearch(e.target.value)}
           />
         </div>
       </div>
