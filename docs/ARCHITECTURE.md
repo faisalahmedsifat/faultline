@@ -225,15 +225,15 @@ GET /ws/:projectId
 ### Connection Lifecycle
 
 1. Client connects to `ws://api:4000/ws/:projectId`
-2. Server registers the connection against the project
-3. When a new error is ingested, `handleAlertSideEffects()` broadcasts a lightweight notification:
+2. Server registers the connection against the project via `addConnection()` in `lib/ws.ts`
+3. The `broadcast()` function in `lib/ws.ts` can send lightweight notifications to connected clients:
    ```json
    { "type": "new_error", "errorId": "err_xxx", "title": "TypeError: ...", "count": 1 }
    ```
-4. On disconnect, the connection is automatically cleaned up
+4. On disconnect, the connection is automatically cleaned up via `removeConnection()`
 5. Connection tracking is in-memory per process — a single API process handles all WebSocket clients
 
-The WebSocket manager (`lib/ws.ts`) tracks connections in a `Map<projectId, Set<WebSocket>>` and handles graceful cleanup on disconnect or send failure.
+The WebSocket manager (`lib/ws.ts`) tracks connections in a `Map<projectId, Set<WebSocket>>` and handles graceful cleanup on disconnect or send failure. Note: the `broadcast()` function is available but is not currently wired into the ingest flow.
 
 ---
 
