@@ -1,22 +1,14 @@
-import { and, eq, lte, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
 import { db } from "../db/client"
-import { alerts, errors, projects } from "../db/schema"
+import { errors, projects } from "../db/schema"
 import { AppError } from "../lib/errors"
 import { fingerprint } from "../lib/fingerprint"
-import {
-  DAILY_COUNT_TTL_SECONDS,
-  RATE_COUNT_TTL_SECONDS,
-  dailyCountKey,
-  rateCountKey
-} from "../lib/ingest"
+import { handleAlertSideEffects } from "../lib/ingest"
 import { createId } from "../lib/id"
 import { jsonOk } from "../lib/http"
-import { logger } from "../lib/logger"
-import { enqueueAlertDelivery } from "../lib/queue"
-import { redisConnection } from "../lib/redis"
 
 const paramsSchema = z.object({
   dsnKey: z.string().min(1)
@@ -38,14 +30,6 @@ const ingestPayloadSchema = z.object({
 })
 
 type IngestPayload = z.infer<typeof ingestPayloadSchema>
-
-type StoredError = {
-  id: string
-  title: string
-  count: number
-  env: string | null
-  route: string | null
-}
 
 export const ingestRouter = new Hono()
 
@@ -165,68 +149,7 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
       route: errors.route
     })
 
-  await handleIngestSideEffects(project.id, errorRecord)
+  await handleAlertSideEffects(project.id, errorRecord, "ingest")
 
   return jsonOk(c, { accepted: true, errorId: errorRecord.id }, 202)
 })
-
-async function handleIngestSideEffects(projectId: string, errorRecord: StoredError) {
-  try {
-    const dailyKey = dailyCountKey(projectId)
-    const dailyCount = await redisConnection.incr(dailyKey)
-
-    if (dailyCount === 1) {
-      await redisConnection.expire(dailyKey, DAILY_COUNT_TTL_SECONDS)
-    }
-
-    const rateKey = rateCountKey(projectId)
-    const rateCount = await redisConnection.incr(rateKey)
-
-    if (rateCount === 1) {
-      await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
-    }
-
-    const matchedAlerts = await db
-      .select({
-        id: alerts.id,
-        channel: alerts.channel,
-        destination: alerts.destination
-      })
-      .from(alerts)
-      .where(
-        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), lte(alerts.threshold, rateCount))
-      )
-
-    if (matchedAlerts.length === 0) {
-      return
-    }
-
-    try {
-      await enqueueAlertDelivery({
-        projectId,
-        alertTargets: matchedAlerts.map((alert) => ({
-          id: alert.id,
-          channel: alert.channel as "slack" | "email" | "discord",
-          destination: alert.destination
-        })),
-        errorId: errorRecord.id,
-        errorTitle: errorRecord.title,
-        count: errorRecord.count,
-        env: errorRecord.env,
-        route: errorRecord.route
-      })
-    } catch (error) {
-      logger.error("ingest.alert_enqueue_failed", {
-        projectId,
-        errorId: errorRecord.id,
-        message: error instanceof Error ? error.message : "Unknown queue error"
-      })
-    }
-  } catch (error) {
-    logger.error("ingest.side_effects_failed", {
-      projectId,
-      errorId: errorRecord.id,
-      message: error instanceof Error ? error.message : "Unknown redis side-effect error"
-    })
-  }
-}
