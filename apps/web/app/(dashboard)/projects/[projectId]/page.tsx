@@ -6,6 +6,7 @@ import { ErrorSheet } from "@/components/error-sheet"
 import { ErrorFilters } from "@/components/error-filters"
 import { GettingStartedBanner } from "@/components/getting-started-banner"
 import { ErrorLiveFeed } from "@/components/error-live-feed"
+import { ErrorChart } from "@/components/error-chart"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Inbox, Settings, AlertCircle, CheckCircle2, BarChart3 } from "lucide-react"
 
@@ -97,6 +98,11 @@ export default async function ErrorInboxPage({
           Settings
         </Link>
       </div>
+
+      {/* Error trend chart */}
+      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+        <ErrorChart projectId={projectId} className="mb-6" />
+      </Suspense>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
