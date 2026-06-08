@@ -226,6 +226,7 @@ Works with Caddy, Nginx, Traefik, or any reverse proxy. Route `/ingest/*` and `/
 | `REDIS_URL` | api, worker | Yes | Redis connection string |
 | `API_URL` | web | Yes | API endpoint for the dashboard |
 | `AUTH_TOKEN` | api, web | No | Shared bearer token for dashboard ↔ API auth |
+| `INGEST_BASE_URL` | api | No | Public URL for ingest (default: `APP_BASE_URL` or `http://localhost:4000`) |
 | `CORS_ORIGIN` | api | No | CORS origin (default: `*`) |
 | `APP_BASE_URL` | api, worker | No | Base URL for link generation |
 | `SLACK_WEBHOOK_URL` | worker | No | Slack webhook for alerts |
@@ -236,6 +237,50 @@ Works with Caddy, Nginx, Traefik, or any reverse proxy. Route `/ingest/*` and `/
 ### Using External Databases
 
 Point `DATABASE_URL` and `REDIS_URL` to managed services (Supabase, Neon, Upstash, etc.) for zero-ops deployments. The API auto-runs migrations on startup.
+
+### Securing the API
+
+For production deployments, set an `AUTH_TOKEN` shared secret on both the API and web services. All dashboard-to-API requests will be authenticated with a Bearer token:
+
+```yaml
+# compose.yml overrides
+services:
+  api:
+    environment:
+      AUTH_TOKEN: ${AUTH_TOKEN}
+  web:
+    environment:
+      AUTH_TOKEN: ${AUTH_TOKEN}
+```
+
+```env
+# .env
+AUTH_TOKEN=your-secure-random-token
+```
+
+Without `AUTH_TOKEN`, the API endpoints are open. Always set this in production.
+
+---
+
+## Open Source
+
+faultline is MIT-licensed. You can use it, modify it, and host it yourself—forever.
+
+**Why self-host?**
+- **No per-event pricing** — error volume doesn't affect your bill
+- **No per-seat pricing** — unlimited team members
+- **Data ownership** — error data never leaves your infrastructure
+- **GDPR-friendly** — no third-party data processing
+- **No vendor lock-in** — MIT license means you always own your setup
+
+**What you need:**
+- A server (or VPS) with Docker installed
+- Optionally, a domain name and reverse proxy (Caddy, Nginx, Traefik)
+
+**Community:**
+- Report issues on [GitHub Issues](https://github.com/faisalahmedsifat/faultline/issues)
+- Submit PRs on [GitHub](https://github.com/faisalahmedsifat/faultline)
+- Follow existing code conventions (see [Contributing](#contributing))
 
 ---
 
