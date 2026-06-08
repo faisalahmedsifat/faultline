@@ -8,18 +8,20 @@
 
 ```
 your app → POST /ingest/:dsn → api (Bun + Hono) → Postgres
-                                api → Redis (counters) → BullMQ queue
-                                                        → worker (Bun) → Slack/Discord/Email
+         → POST /api/{id}/store/ (Sentry)    → Redis (counters)
+                                              → BullMQ queue
+                                              → worker (Bun) → Slack/Discord/Email
 
 dashboard (Next.js) → api (REST)
+                    ↔ api (WebSocket) — real-time error notifications
 ```
 
 | Service | Runtime | Purpose |
 |---------|---------|---------|
-| `api` | Bun + Hono | Ingest errors, serve dashboard APIs, enqueue alerts |
-| `web` | Next.js 14 | Dashboard UI (no API routes, no DB access) |
+| `api` | Bun + Hono 4 | Ingest errors, serve dashboard APIs, enqueue alerts, WebSocket server |
+| `web` | Next.js 16 | Dashboard UI (no API routes, no DB access) |
 | `worker` | Bun + BullMQ | Consume `alert.deliver` queue, send notifications |
-| `sdk` | TypeScript | Zero-dep client library (`faultline` npm package) |
+| `sdk` | TypeScript | Zero-dep client library (`@xyph3r/faultline` npm package) |
 
 ### Ports
 
@@ -27,6 +29,7 @@ dashboard (Next.js) → api (REST)
 |---------|-------------------|-----------------|
 | web | 3000 | 3000 |
 | api | 4000 | 4000 |
+| worker (health) | 4001 | 4001 |
 | db | 5432 | — |
 | redis | 6379 | — |
 
@@ -35,10 +38,12 @@ dashboard (Next.js) → api (REST)
 | From | To | Protocol |
 |------|----|----------|
 | web | api | HTTP (`http://api:4000`) |
+| web | api | WebSocket (`ws://api:4000/ws/:projectId`) |
 | api | db | TCP (postgres-js) |
 | api | redis | TCP (ioredis, BullMQ producer) |
 | worker | redis | TCP (BullMQ consumer) |
 | SDK | api | HTTPS (`POST /ingest/:dsn`) |
+| Sentry SDK | api | HTTPS (`POST /api/{id}/store/`) |
 
 ---
 
@@ -77,6 +82,8 @@ dashboard (Next.js) → api (REST)
 | `first_seen` | timestamptz | Set on first occurrence |
 | `last_seen` | timestamptz | Updated on every occurrence |
 | `metadata` | jsonb | Arbitrary key-value from SDK |
+| `release` | text | Release version (for source map resolution) |
+| `resolved_stack` | jsonb | Cached resolved stack frames |
 | `users` | text[] | Affected user IDs |
 
 Indexes: `(project_id, status)`, `(project_id, fingerprint)` UNIQUE, `(project_id, last_seen)`, `(project_id, env)`
@@ -101,6 +108,7 @@ Unique constraint: `(project_id, channel)` — max 3 rows per project.
 | `fl:counts:{project_id}:{YYYY-MM-DD}` | string (INCR) | 90 days | Daily error volume |
 | `fl:rate:{project_id}` | string (INCR) | 15 min | Alert threshold counter |
 | `fl:delivered:{jobId}:{targetId}` | string | 1 hour | Delivery idempotency |
+| `fl:rl:{dsn_key}` | string (INCR) | 15 sec | Rate limit counter per DSN |
 
 ---
 
@@ -115,12 +123,15 @@ POST /ingest/:dsn_key
 3. **UPSERT** on `(project_id, fingerprint)`:
    - New: INSERT with `count=1`, `first_seen=now()`, `last_seen=now()`.
    - Existing: UPDATE `count+1`, `last_seen=now()`, append `userId` to `users[]` if new, increment `user_count`.
-4. `INCR fl:counts:{project_id}:{today}` in Redis.
-5. `INCR fl:rate:{project_id}` in Redis. Set TTL to 900s on first increment.
-6. If `rate_count == threshold` for any enabled alert → enqueue `alert.deliver` job.
-7. Return `202 Accepted`.
+4. Call shared `handleAlertSideEffects(projectId, errorRecord)` from `lib/ingest.ts`:
+   a. `INCR fl:counts:{project_id}:{today}` in Redis. Set TTL to 90 days on first increment.
+   b. `INCR fl:rate:{project_id}` in Redis. Set TTL to 900s on first increment.
+   c. Query enabled alerts where `threshold <= rateCount` (fire when rate meets or exceeds threshold).
+   d. Enqueue `alert.deliver` BullMQ job if alerts match.
+   e. Broadcast WebSocket notification to connected clients for this project.
+5. Return `202 Accepted`.
 
-The ingest always returns `202`. Redis side effects and alert enqueuing are fire-and-forget — they never block the response. Only `title` is required; all other fields are optional.
+The ingest always returns `202`. Redis side effects, alert enqueuing, and WebSocket broadcasts are fire-and-forget — they never block the response. Only `title` is required; all other fields are optional. Both native (`POST /ingest/:dsnKey`) and Sentry-compatible (`POST /api/:projectId/store/`) ingest paths use the same `handleAlertSideEffects` shared function.
 
 ---
 
@@ -151,19 +162,92 @@ BullMQ config: 3 attempts, 5s exponential backoff, keep last 1000 failed jobs fo
 
 ## API Reference
 
+### Public Ingest (no auth)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/ingest/:dsnKey` | Ingest error event (faultline native format) |
+| `POST` | `/api/:projectId/store/` | Ingest error event (Sentry envelope format) |
+
+### Health
+
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/health` | Health check |
-| `POST` | `/ingest/:dsnKey` | Ingest error event |
-| `GET` | `/api/projects` | List projects |
+
+### Projects (auth required if AUTH_TOKEN set)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/projects` | List all projects |
 | `POST` | `/api/projects` | Create project |
+| `GET` | `/api/projects/:id` | Get project (with DSN URL) |
 | `PUT` | `/api/projects/:id/rotate-dsn` | Rotate DSN key |
 | `DELETE` | `/api/projects/:id` | Delete project + cascade |
-| `GET` | `/api/errors?projectId=&status=&env=&page=&pageSize=` | List errors (paginated) |
-| `GET` | `/api/errors/:id` | Error detail |
+| `GET` | `/api/projects/:id/stats` | Error stats (30-day volume, totals, top 5) |
+
+### Errors (auth required if AUTH_TOKEN set)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/errors?projectId=&status=&env=&search=&page=&pageSize=` | List errors (paginated, searchable) |
+| `GET` | `/api/errors/:id` | Error detail (with resolved stack) |
 | `PATCH` | `/api/errors/:id` | Update error status |
+
+### Alerts (auth required if AUTH_TOKEN set)
+
+| Method | Path | Purpose |
+|--------|------|---------|
 | `GET` | `/api/alerts?projectId=` | List alert configs |
-| `PUT` | `/api/alerts` | Replace all alert configs |
+| `PUT` | `/api/alerts` | Replace all alert configs (upsert) |
+
+### Source Maps (auth required if AUTH_TOKEN set)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/sourcemaps/upload` | Upload source map bundle |
+
+### WebSocket
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `WS` | `/ws/:projectId` | Real-time error notifications |
+
+---
+
+## WebSocket (Real-time Notifications)
+
+The API server provides a WebSocket endpoint for real-time error notifications:
+
+```
+GET /ws/:projectId
+```
+
+### Connection Lifecycle
+
+1. Client connects to `ws://api:4000/ws/:projectId`
+2. Server registers the connection against the project
+3. When a new error is ingested, `handleAlertSideEffects()` broadcasts a lightweight notification:
+   ```json
+   { "type": "new_error", "errorId": "err_xxx", "title": "TypeError: ...", "count": 1 }
+   ```
+4. On disconnect, the connection is automatically cleaned up
+5. Connection tracking is in-memory per process — a single API process handles all WebSocket clients
+
+The WebSocket manager (`lib/ws.ts`) tracks connections in a `Map<projectId, Set<WebSocket>>` and handles graceful cleanup on disconnect or send failure.
+
+---
+
+## Rate Limiting
+
+Public ingest endpoints are protected by Redis-backed rate limiting:
+
+| Endpoint | Key | Limit |
+|----------|-----|-------|
+| `POST /ingest/:dsnKey` | `fl:rl:{dsnKey}` | 100 req / 15s |
+| `POST /api/:projectId/store/` | `fl:rl:{sentry_key}` | 100 req / 15s |
+
+Uses a fixed-window counter via Redis Lua script (`INCR` + `EXPIRE`). When exceeded, returns `429 Too Many Requests` with `Retry-After` header. Fails open — if Redis is unreachable, the request is allowed through.
 
 ---
 
@@ -226,19 +310,18 @@ Key properties:
 
 ## Deployment
 
-Production:
+See [README.md](../README.md#production-deployment) for full deployment instructions. Quick reference:
+
 ```bash
-docker compose up -d
+docker compose up -d                                    # all services
+cp .env.example .env && docker compose up -d             # with alert config
 ```
 
-With alert config:
-```bash
-cp .env.example .env
-# Edit .env with your Slack/Discord/Resend credentials
-docker compose up -d
-```
-
-A reverse proxy (Caddy, Nginx, Cloudflare Tunnel) is recommended in production. See `infra/Caddyfile.example` for a Caddy config that routes `/ingest/*` and `/api/*` to the API service and everything else to the web dashboard.
+Production recommendations:
+- Run a reverse proxy (Caddy, Nginx, Traefik) in front — see `infra/Caddyfile.example`
+- Set `AUTH_TOKEN` to secure dashboard ↔ API communication
+- Point `DATABASE_URL` and `REDIS_URL` to managed services for zero-ops deployments
+- Use health check endpoints (`/health`) for orchestration readiness probes
 
 ---
 
