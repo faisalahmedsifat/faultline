@@ -26,12 +26,20 @@ export function ErrorFilters({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const searchParamsRef = useRef(searchParams)
+  searchParamsRef.current = searchParams
 
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "")
 
   useEffect(() => {
     setSearchInput(searchParams.get("search") ?? "")
   }, [searchParams])
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams)
@@ -48,7 +56,7 @@ export function ErrorFilters({
     setSearchInput(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams)
+      const params = new URLSearchParams(searchParamsRef.current)
       if (value) {
         params.set("search", value)
       } else {
