@@ -128,10 +128,9 @@ POST /ingest/:dsn_key
    b. `INCR fl:rate:{project_id}` in Redis. Set TTL to 900s on first increment.
    c. Query enabled alerts where `threshold <= rateCount` (fire when rate meets or exceeds threshold).
    d. Enqueue `alert.deliver` BullMQ job if alerts match.
-   e. Broadcast WebSocket notification to connected clients for this project.
 5. Return `202 Accepted`.
 
-The ingest always returns `202`. Redis side effects, alert enqueuing, and WebSocket broadcasts are fire-and-forget — they never block the response. Only `title` is required; all other fields are optional. Both native (`POST /ingest/:dsnKey`) and Sentry-compatible (`POST /api/:projectId/store/`) ingest paths use the same `handleAlertSideEffects` shared function.
+The ingest always returns `202`. Redis side effects and alert enqueuing are fire-and-forget — they never block the response. Only `title` is required; all other fields are optional. Both native (`POST /ingest/:dsnKey`) and Sentry-compatible (`POST /api/:projectId/store/`) ingest paths use the same `handleAlertSideEffects` shared function.
 
 ---
 
@@ -205,7 +204,7 @@ BullMQ config: 3 attempts, 5s exponential backoff, keep last 1000 failed jobs fo
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/api/sourcemaps/upload` | Upload source map bundle |
+| `POST` | `/api/projects/:id/sourcemaps` | Upload source map bundle |
 
 ### WebSocket
 
