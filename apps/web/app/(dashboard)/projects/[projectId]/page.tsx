@@ -85,10 +85,7 @@ export default async function ErrorInboxPage({
             <span className="text-muted-foreground/40">/</span>
             {projectName && <span className="text-foreground font-medium">{projectName}</span>}
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">Error Inbox</h1>
-            <ErrorLiveFeed projectId={projectId} />
-          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Error Inbox</h1>
         </div>
         <Link
           href={`/projects/${projectId}/settings`}
