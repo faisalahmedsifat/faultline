@@ -15,6 +15,7 @@ import {
 } from "../lib/ingest"
 import { enqueueAlertDelivery } from "../lib/queue"
 import { redisConnection } from "../lib/redis"
+import { broadcast } from "../lib/ws"
 import { sql, eq, and, lte } from "drizzle-orm"
 import { alerts } from "../db/schema"
 
@@ -313,6 +314,13 @@ async function handleSentrySideEffects(projectId: string, errorRecord: StoredErr
     if (rateCount === 1) {
       await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
     }
+
+    broadcast(projectId, {
+      type: "new_error",
+      errorId: errorRecord.id,
+      title: errorRecord.title,
+      count: errorRecord.count
+    })
 
     const matchedAlerts = await db
       .select({
