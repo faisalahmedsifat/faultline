@@ -9,6 +9,10 @@ import { fingerprint } from "../lib/fingerprint"
 import { handleAlertSideEffects } from "../lib/ingest"
 import { createId } from "../lib/id"
 import { jsonOk } from "../lib/http"
+import { logger } from "../lib/logger"
+import { enqueueAlertDelivery } from "../lib/queue"
+import { redisConnection } from "../lib/redis"
+import { broadcast } from "../lib/ws"
 
 const paramsSchema = z.object({
   dsnKey: z.string().min(1)
@@ -153,3 +157,71 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
 
   return jsonOk(c, { accepted: true, errorId: errorRecord.id }, 202)
 })
+
+async function handleIngestSideEffects(projectId: string, errorRecord: StoredError) {
+  try {
+    const dailyKey = dailyCountKey(projectId)
+    const dailyCount = await redisConnection.incr(dailyKey)
+
+    if (dailyCount === 1) {
+      await redisConnection.expire(dailyKey, DAILY_COUNT_TTL_SECONDS)
+    }
+
+    const rateKey = rateCountKey(projectId)
+    const rateCount = await redisConnection.incr(rateKey)
+
+    if (rateCount === 1) {
+      await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
+    }
+
+    broadcast(projectId, {
+      type: "new_error",
+      errorId: errorRecord.id,
+      title: errorRecord.title,
+      count: errorRecord.count
+    })
+
+    const matchedAlerts = await db
+      .select({
+        id: alerts.id,
+        channel: alerts.channel,
+        destination: alerts.destination
+      })
+      .from(alerts)
+      .where(
+        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), lte(alerts.threshold, rateCount))
+      )
+
+    if (matchedAlerts.length === 0) {
+      return
+    }
+
+    try {
+      await enqueueAlertDelivery({
+        projectId,
+        alertTargets: matchedAlerts.map((alert) => ({
+          id: alert.id,
+          channel: alert.channel as "slack" | "email" | "discord",
+          destination: alert.destination
+        })),
+        errorId: errorRecord.id,
+        errorTitle: errorRecord.title,
+        count: errorRecord.count,
+        env: errorRecord.env,
+        route: errorRecord.route
+      })
+    } catch (error) {
+      logger.error("ingest.alert_enqueue_failed", {
+        projectId,
+        errorId: errorRecord.id,
+        message: error instanceof Error ? error.message : "Unknown queue error"
+      })
+    }
+  } catch (error) {
+    logger.error("ingest.side_effects_failed", {
+      projectId,
+      errorId: errorRecord.id,
+      message: error instanceof Error ? error.message : "Unknown redis side-effect error"
+    })
+  }
+}
