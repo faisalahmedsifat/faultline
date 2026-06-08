@@ -15,7 +15,7 @@ import {
 } from "../lib/ingest"
 import { enqueueAlertDelivery } from "../lib/queue"
 import { redisConnection } from "../lib/redis"
-import { sql, eq, and } from "drizzle-orm"
+import { sql, eq, and, lte } from "drizzle-orm"
 import { alerts } from "../db/schema"
 
 // ── Sentry-compatible ingest ──
@@ -322,7 +322,7 @@ async function handleSentrySideEffects(projectId: string, errorRecord: StoredErr
       })
       .from(alerts)
       .where(
-        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), eq(alerts.threshold, rateCount))
+        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), lte(alerts.threshold, rateCount))
       )
 
     if (matchedAlerts.length === 0) return

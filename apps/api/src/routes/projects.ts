@@ -101,6 +101,33 @@ projectsRouter.put("/api/projects/:id/rotate-dsn", async (c) => {
   })
 })
 
+projectsRouter.get("/api/projects/:id", async (c) => {
+  const params = projectParamsSchema.parse(c.req.param())
+
+  const [project] = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      dsnKey: projects.dsnKey,
+      createdAt: projects.createdAt
+    })
+    .from(projects)
+    .where(eq(projects.id, params.id))
+    .limit(1)
+
+  if (!project) {
+    throw new AppError({
+      code: "project_not_found",
+      message: "Project not found",
+      statusCode: 404
+    })
+  }
+
+  return jsonOk(c, {
+    project: serializeProject(project)
+  })
+})
+
 projectsRouter.delete("/api/projects/:id", async (c) => {
   const params = projectParamsSchema.parse(c.req.param())
 
