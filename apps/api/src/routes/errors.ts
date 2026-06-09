@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
@@ -83,9 +83,10 @@ errorsRouter.get("/api/errors", async (c) => {
   }
 
   if (query.data.search) {
-    const pattern = `%${query.data.search}%`
+    const sanitized = query.data.search.replace(/%/g, '\\%').replace(/_/g, '\\_')
+    const pattern = `%${sanitized}%`
     filters.push(
-      or(ilike(errors.title, pattern), ilike(errors.message, pattern))
+      sql`(${errors.title} ILIKE ${pattern} ESCAPE '\\' OR ${errors.message} ILIKE ${pattern} ESCAPE '\\')`
     )
   }
 
