@@ -23,13 +23,15 @@ Open `http://localhost:3000`. Create a project. Copy your DSN.
 faultline accepts Sentry's ingest format. Use any of Sentry's 20+ language SDKs by changing the DSN. Your DSN format:
 
 ```
-https://{dsn_key}@your-instance.com/1
+https://{dsn_key}@your-instance.com/{project_id}
 ```
+
+The `{project_id}` is your faultline project ID (e.g., `prj_abc123def`). Get it from your project card in the dashboard.
 
 ```python
 # Python
 import sentry_sdk
-sentry_sdk.init(dsn="https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1")
+sentry_sdk.init(dsn="https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def")
 
 try:
     1 / 0
@@ -40,7 +42,7 @@ except ZeroDivisionError:
 ```ts
 // Node.js
 import * as Sentry from "@sentry/node"
-Sentry.init({ dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1" })
+Sentry.init({ dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def" })
 Sentry.captureException(new Error("something broke"))
 ```
 
@@ -48,7 +50,7 @@ Sentry.captureException(new Error("something broke"))
 // Go
 import "github.com/getsentry/sentry-go"
 sentry.Init(sentry.ClientOptions{
-    Dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/1",
+    Dsn: "https://LV0l2yhx7QtWCkoumWCw660e@faultline.example.com/prj_abc123def",
 })
 ```
 
