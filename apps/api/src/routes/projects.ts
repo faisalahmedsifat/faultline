@@ -8,6 +8,7 @@ import { AppError } from "../lib/errors"
 import { jsonOk } from "../lib/http"
 import { createId } from "../lib/id"
 import { dailyCountKey } from "../lib/ingest"
+import { logger } from "../lib/logger"
 import { assertProjectExists, buildDsnUrl, buildSentryDsnUrl } from "../lib/project"
 import { redisConnection } from "../lib/redis"
 import { createToken } from "../lib/tokens"
@@ -140,7 +141,7 @@ projectsRouter.delete("/api/projects/:id", async (c) => {
     const [project] = await tx
       .delete(projects)
       .where(eq(projects.id, params.id))
-      .returning({ id: projects.id })
+      .returning({ id: projects.id, dsnKey: projects.dsnKey })
 
     return project
   })
@@ -152,6 +153,12 @@ projectsRouter.delete("/api/projects/:id", async (c) => {
       statusCode: 404
     })
   }
+
+  // Fire-and-forget Redis cleanup — must not block the 204 response
+  void cleanupProjectRedisKeys(params.id, deleted.dsnKey)
+    .catch(() => {
+      // Already handled inside cleanupProjectRedisKeys
+    })
 
   return c.body(null, 204)
 })
@@ -227,6 +234,27 @@ projectsRouter.get("/api/projects/:id/stats", async (c) => {
     }))
   })
 })
+
+async function cleanupProjectRedisKeys(projectId: string, dsnKey: string) {
+  try {
+    await redisConnection.del(`fl:rate:${projectId}`, `fl:rl:${dsnKey}`)
+
+    // Delete daily count keys for the last 90 days
+    const now = new Date()
+    const keys: string[] = []
+    for (let i = 0; i < 90; i++) {
+      const date = new Date(now)
+      date.setDate(date.getDate() - i)
+      keys.push(dailyCountKey(projectId, date))
+    }
+    await redisConnection.del(...keys)
+  } catch (error) {
+    logger.error("project_delete.redis_cleanup_failed", {
+      projectId,
+      message: error instanceof Error ? error.message : "Unknown error"
+    })
+  }
+}
 
 function serializeProject(project: {
   id: string
