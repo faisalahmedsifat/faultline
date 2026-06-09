@@ -29,6 +29,7 @@ function projectColor(projectId: string): string {
 export function ProjectCard({ project }: { project: ProjectDto }) {
   const [dsn, setDsn] = useState(project.dsn)
   const [dsnKey, setDsnKey] = useState(project.dsnKey)
+  const [sentryDsn, setSentryDsn] = useState(project.sentryDsn)
   const [rotating, setRotating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -45,6 +46,7 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
       const result = await rotateDsn(project.id)
       setDsn(result.project.dsn)
       setDsnKey(result.project.dsnKey)
+      setSentryDsn(result.project.sentryDsn)
       toast.success("DSN rotated — update your SDK config")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Rotation failed")
@@ -77,9 +79,6 @@ export function ProjectCard({ project }: { project: ProjectDto }) {
       setDeleting(false)
     }
   }
-
-  const ingestBase = dsn.substring(0, dsn.lastIndexOf("/ingest/"))
-  const sentryDsn = `https://${dsnKey}@${ingestBase.replace(/https?:\/\//, "")}/${project.id}`
 
   const created = new Date(project.createdAt).toLocaleDateString("en-US", {
     year: "numeric",

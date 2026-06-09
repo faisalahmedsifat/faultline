@@ -8,6 +8,7 @@ export type ProjectDto = {
   name: string
   dsnKey: string
   dsn: string
+  sentryDsn: string
   createdAt: string
 }
 
