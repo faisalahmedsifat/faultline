@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { Hono } from "hono"
 import { z } from "zod"
 
@@ -27,6 +27,18 @@ const errorParamsSchema = z.object({
 
 const patchErrorSchema = z.object({
   status: errorStatusSchema
+})
+
+const bulkUpdateSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        status: errorStatusSchema
+      })
+    )
+    .min(1)
+    .max(100)
 })
 
 type ErrorListItemDto = {
@@ -252,5 +264,96 @@ errorsRouter.patch("/api/errors/:id", async (c) => {
       firstSeen: row.firstSeen.toISOString(),
       lastSeen: row.lastSeen.toISOString()
     }
+  })
+})
+
+errorsRouter.post("/api/errors/bulk", async (c) => {
+  const rawBody = await parseJsonBody(c)
+  const payload = bulkUpdateSchema.parse(rawBody)
+
+  const ids = [...new Set(payload.updates.map((u) => u.id))]
+
+  // Verify all error IDs exist and belong to the same project
+  const existing = await db
+    .select({ id: errors.id, projectId: errors.projectId })
+    .from(errors)
+    .where(inArray(errors.id, ids))
+
+  if (existing.length !== ids.length) {
+    throw new AppError({
+      code: "some_errors_not_found",
+      message: "One or more error IDs were not found",
+      statusCode: 400
+    })
+  }
+
+  const projectIds = [...new Set(existing.map((e) => e.projectId))]
+  if (projectIds.length > 1) {
+    throw new AppError({
+      code: "cross_project_update",
+      message: "All errors must belong to the same project",
+      statusCode: 400
+    })
+  }
+
+  const statusMap = new Map(payload.updates.map((u) => [u.id, u.status]))
+
+  const updated = await db.transaction(async (tx) => {
+    const results: Array<{
+      id: string
+      projectId: string
+      title: string
+      message: string | null
+      route: string | null
+      file: string | null
+      line: number | null
+      env: string | null
+      level: string | null
+      status: string
+      count: number
+      userCount: number
+      firstSeen: Date
+      lastSeen: Date
+    }> = []
+
+    for (const err of existing) {
+      const newStatus = statusMap.get(err.id)!
+      const [row] = await tx
+        .update(errors)
+        .set({ status: newStatus })
+        .where(eq(errors.id, err.id))
+        .returning({
+          id: errors.id,
+          projectId: errors.projectId,
+          title: errors.title,
+          message: errors.message,
+          route: errors.route,
+          file: errors.file,
+          line: errors.line,
+          env: errors.env,
+          level: errors.level,
+          status: errors.status,
+          count: errors.count,
+          userCount: errors.userCount,
+          firstSeen: errors.firstSeen,
+          lastSeen: errors.lastSeen
+        })
+
+      if (row) {
+        results.push(row)
+      }
+    }
+
+    return results
+  })
+
+  return jsonOk(c, {
+    summary: { modified: updated.length },
+    errors: updated.map((row) => ({
+      ...row,
+      status: row.status as ErrorListItemDto["status"],
+      firstSeen: row.firstSeen.toISOString(),
+      lastSeen: row.lastSeen.toISOString()
+    }))
   })
 })
