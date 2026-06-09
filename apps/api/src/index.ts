@@ -1,9 +1,10 @@
-import { pingDb, runMigrations } from "./db/client"
+import { closeDbConnection, pingDb, runMigrations } from "./db/client"
 import { createApp } from "./server"
 import { env } from "./lib/env"
 import { logger } from "./lib/logger"
-import { connectRedis } from "./lib/redis"
-import { addConnection, removeConnection, type WSData } from "./lib/ws"
+import { closeAlertQueue } from "./lib/queue"
+import { closeRedis, connectRedis } from "./lib/redis"
+import { addConnection, closeAllConnections, removeConnection, type WSData } from "./lib/ws"
 
 async function start() {
   await runMigrations()
@@ -12,7 +13,7 @@ async function start() {
 
   const app = createApp()
 
-  Bun.serve({
+  const httpServer = Bun.serve({
     port: env.PORT,
     fetch(req, server) {
       const url = new URL(req.url)
@@ -43,7 +44,7 @@ async function start() {
       close(ws) {
         removeConnection(ws)
       },
-      message(ws, _msg) {
+      message(_ws, _msg) {
         // Inbound messages not needed for this notification pattern
       }
     }
@@ -53,6 +54,32 @@ async function start() {
     host: "0.0.0.0",
     port: env.PORT,
     nodeEnv: env.NODE_ENV
+  })
+
+  const shutdown = async (signal: string) => {
+    logger.info("api.shutdown", { signal })
+    httpServer.stop()
+    closeAllConnections()
+    await closeDbConnection()
+    await closeRedis()
+    await closeAlertQueue()
+    process.exit(0)
+  }
+
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT")
+    setTimeout(() => {
+      logger.error("api.force_shutdown", { message: "Graceful shutdown timed out after 5s" })
+      process.exit(0)
+    }, 5000)
+  })
+
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM")
+    setTimeout(() => {
+      logger.error("api.force_shutdown", { message: "Graceful shutdown timed out after 5s" })
+      process.exit(0)
+    }, 5000)
   })
 }
 
