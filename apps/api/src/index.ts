@@ -20,6 +20,14 @@ async function start() {
 
       if (wsMatch) {
         const projectId = wsMatch[1]
+
+        if (env.CORS_ORIGIN) {
+          const origin = req.headers.get("Origin")
+          if (origin !== env.CORS_ORIGIN) {
+            return new Response("Forbidden", { status: 403 })
+          }
+        }
+
         const upgraded = server.upgrade(req, {
           data: { projectId } satisfies WSData
         })
