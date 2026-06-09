@@ -11,7 +11,18 @@ import { logger } from "../lib/logger"
 
 export const sourcemapsRouter = new Hono()
 
+const MAX_SOURCEMAP_BODY_SIZE = 52_428_800 // 50MB
+
 sourcemapsRouter.post("/api/projects/:id/sourcemaps", async (c) => {
+  const contentLength = parseInt(c.req.header("content-length") ?? "0", 10)
+  if (contentLength > MAX_SOURCEMAP_BODY_SIZE) {
+    throw new AppError({
+      code: "payload_too_large",
+      message: "Request body exceeds 50MB limit",
+      statusCode: 413
+    })
+  }
+
   const projectId = c.req.param("id")
 
   // Verify project exists
