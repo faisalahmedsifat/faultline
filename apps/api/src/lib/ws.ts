@@ -28,6 +28,15 @@ export function removeConnection(ws: ServerWebSocket<WSData>) {
   }
 }
 
+export function closeAllConnections() {
+  for (const [, clients] of connections) {
+    for (const ws of [...clients]) {
+      ws.close(1001, "Server shutting down")
+    }
+  }
+  connections.clear()
+}
+
 export function broadcast(projectId: string, notification: WSNotification) {
   const clients = connections.get(projectId);
   if (!clients || clients.size === 0) return;
