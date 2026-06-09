@@ -37,6 +37,8 @@ type IngestPayload = z.infer<typeof ingestPayloadSchema>
 
 export const ingestRouter = new Hono()
 
+const MAX_INGEST_BODY_SIZE = 1_048_576 // 1MB
+
 ingestRouter.post("/ingest/:dsnKey", async (c) => {
   const parsedParams = paramsSchema.safeParse(c.req.param())
 
@@ -46,6 +48,15 @@ ingestRouter.post("/ingest/:dsnKey", async (c) => {
       message: "Invalid DSN key",
       statusCode: 400,
       details: parsedParams.error.flatten()
+    })
+  }
+
+  const contentLength = parseInt(c.req.header("content-length") ?? "0", 10)
+  if (contentLength > MAX_INGEST_BODY_SIZE) {
+    throw new AppError({
+      code: "payload_too_large",
+      message: "Request body exceeds 1MB limit",
+      statusCode: 413
     })
   }
 

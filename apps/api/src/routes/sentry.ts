@@ -156,7 +156,18 @@ function mapLevel(level?: string): "error" | "warning" | "info" {
 
 export const sentryRouter = new Hono()
 
+const MAX_SENTRY_BODY_SIZE = 1_048_576 // 1MB
+
 sentryRouter.post("/api/:projectId/store", async (c) => {
+  const contentLength = parseInt(c.req.header("content-length") ?? "0", 10)
+  if (contentLength > MAX_SENTRY_BODY_SIZE) {
+    throw new AppError({
+      code: "payload_too_large",
+      message: "Request body exceeds 1MB limit",
+      statusCode: 413
+    })
+  }
+
   // Sentry DSN format: https://{dsn_key}@{host}/{project_id}
   // The dsn_key is sent as sentry_key in the X-Sentry-Auth header
   const urlProjectId = c.req.param("projectId")
