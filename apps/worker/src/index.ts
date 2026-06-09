@@ -3,7 +3,7 @@ import { QueueEvents, Worker, type Job } from "bullmq"
 import { env } from "./env"
 import { logger } from "./logger"
 import { processAlertDelivery } from "./processor"
-import { closeRedis, connectRedis, createRedisConnection, waitForConnection } from "./redis"
+import { closeRedis, connectRedis, createRedisConnection, redisConnection, waitForConnection } from "./redis"
 import type { AlertDeliveryJob } from "./types"
 
 const ALERT_DELIVER_QUEUE = "alert.deliver"
@@ -12,14 +12,6 @@ const HEALTH_PORT = parseInt(process.env.HEALTH_PORT ?? "4001")
 
 async function start() {
   await connectRedis()
-
-  // Health check server
-  Bun.serve({
-    port: HEALTH_PORT,
-    fetch: () => new Response(JSON.stringify({ service: "worker", status: "ok" }), {
-      headers: { "content-type": "application/json" }
-    })
-  })
 
   const workerConnection = createRedisConnection()
   const eventsConnection = createRedisConnection()
@@ -41,6 +33,31 @@ async function start() {
 
   const queueEvents = new QueueEvents(ALERT_DELIVER_QUEUE, {
     connection: eventsConnection
+  })
+
+  // Health check server
+  Bun.serve({
+    port: HEALTH_PORT,
+    fetch: async () => {
+      try {
+        await redisConnection.ping()
+        await workerConnection.ping()
+        return new Response(
+          JSON.stringify({ service: "worker", status: "ok", redis: "connected" }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+      } catch (error) {
+        return new Response(
+          JSON.stringify({
+            service: "worker",
+            status: "error",
+            redis: "disconnected",
+            error: error instanceof Error ? error.message : "Health check failed"
+          }),
+          { status: 503, headers: { "content-type": "application/json" } }
+        )
+      }
+    }
   })
 
   worker.on("ready", () => {
