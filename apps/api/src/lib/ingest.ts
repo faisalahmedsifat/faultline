@@ -5,6 +5,7 @@ import { alerts } from "../db/schema"
 import { logger } from "./logger"
 import { enqueueAlertDelivery } from "./queue"
 import { redisConnection } from "./redis"
+import { broadcast } from "./ws"
 
 export function dailyCountKey(projectId: string, date = new Date()) {
   const isoDate = date.toISOString().slice(0, 10)
@@ -45,6 +46,13 @@ export async function handleAlertSideEffects(
     if (rateCount === 1) {
       await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
     }
+
+    broadcast(projectId, {
+      type: "new_error",
+      errorId: errorRecord.id,
+      title: errorRecord.title,
+      count: errorRecord.count
+    })
 
     const matchedAlerts = await db
       .select({

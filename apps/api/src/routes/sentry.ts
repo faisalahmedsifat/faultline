@@ -9,17 +9,6 @@ import { handleAlertSideEffects } from "../lib/ingest"
 import { createId } from "../lib/id"
 import { jsonOk } from "../lib/http"
 import { logger } from "../lib/logger"
-import {
-  DAILY_COUNT_TTL_SECONDS,
-  RATE_COUNT_TTL_SECONDS,
-  dailyCountKey,
-  rateCountKey
-} from "../lib/ingest"
-import { enqueueAlertDelivery } from "../lib/queue"
-import { redisConnection } from "../lib/redis"
-import { broadcast } from "../lib/ws"
-import { sql, eq, and, lte } from "drizzle-orm"
-import { alerts } from "../db/schema"
 
 // ── Sentry-compatible ingest ──
 // Accepts POST /api/{dsn_key}/store/ from any Sentry SDK
@@ -305,67 +294,3 @@ sentryRouter.post("/api/:projectId/store", async (c) => {
   // Sentry expects 200, not 202
   return jsonOk(c, { id: event.event_id ?? errorRecord.id }, 200)
 })
-
-async function handleSentrySideEffects(projectId: string, errorRecord: StoredError) {
-  try {
-    const dailyKey = dailyCountKey(projectId)
-    const dailyCount = await redisConnection.incr(dailyKey)
-    if (dailyCount === 1) {
-      await redisConnection.expire(dailyKey, DAILY_COUNT_TTL_SECONDS)
-    }
-
-    const rateKey = rateCountKey(projectId)
-    const rateCount = await redisConnection.incr(rateKey)
-    if (rateCount === 1) {
-      await redisConnection.expire(rateKey, RATE_COUNT_TTL_SECONDS)
-    }
-
-    broadcast(projectId, {
-      type: "new_error",
-      errorId: errorRecord.id,
-      title: errorRecord.title,
-      count: errorRecord.count
-    })
-
-    const matchedAlerts = await db
-      .select({
-        id: alerts.id,
-        channel: alerts.channel,
-        destination: alerts.destination
-      })
-      .from(alerts)
-      .where(
-        and(eq(alerts.projectId, projectId), eq(alerts.enabled, true), lte(alerts.threshold, rateCount))
-      )
-
-    if (matchedAlerts.length === 0) return
-
-    try {
-      await enqueueAlertDelivery({
-        projectId,
-        alertTargets: matchedAlerts.map((a) => ({
-          id: a.id,
-          channel: a.channel as "slack" | "email" | "discord",
-          destination: a.destination
-        })),
-        errorId: errorRecord.id,
-        errorTitle: errorRecord.title,
-        count: errorRecord.count,
-        env: errorRecord.env,
-        route: errorRecord.route
-      })
-    } catch (error) {
-      logger.error("sentry.alert_enqueue_failed", {
-        projectId,
-        errorId: errorRecord.id,
-        message: error instanceof Error ? error.message : "Unknown"
-      })
-    }
-  } catch (error) {
-    logger.error("sentry.side_effects_failed", {
-      projectId,
-      errorId: errorRecord.id,
-      message: error instanceof Error ? error.message : "Unknown"
-    })
-  }
-}
