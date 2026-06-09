@@ -30,7 +30,7 @@ export function removeConnection(ws: ServerWebSocket<WSData>) {
 
 export function closeAllConnections() {
   for (const [, clients] of connections) {
-    for (const ws of clients) {
+    for (const ws of [...clients]) {
       ws.close(1001, "Server shutting down")
     }
   }
